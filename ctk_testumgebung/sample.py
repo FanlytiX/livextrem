@@ -5,7 +5,7 @@ import customtkinter as ctk
 # Globale Einstellungen
 ctk.set_appearance_mode("teststyle")  # "dark", "light", oder "system"
 #ctk.set_default_color_theme("blue")  # "blue", "green", "dark-blue"
-ctk.set_default_color_theme("C:\\Users\\stmar\\Documents\\RDFSemester1\\Semester_3_4\\Projektarbeit\\fanlytix\\ctk_testumgebung\\teststyle.json")  # "blue", "green", "dark-blue"
+ctk.set_default_color_theme("C:\\Users\\stmar\\Documents\\RDFSemester1\\Semester_3_4\\Projektarbeit\\livextrem\\ctk_testumgebung\\teststyle.json")  # "blue", "green", "dark-blue"
 
 # Hauptfenster
 root = ctk.CTk()
