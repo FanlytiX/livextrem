@@ -1,0 +1,6 @@
+fremdsys.py:
+TwitchAPI, die öffentliche Daten ausliest.
+
+oauth:
+Authentifizierungsseite, die die Eingabemaske von Twitch öffnet und man sich im Browser einloggen soll.
+Daraus werden die Tokens gespeichert und an den ursprung zurück übergeben.
