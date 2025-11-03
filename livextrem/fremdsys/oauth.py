@@ -11,14 +11,14 @@ twd = Daten()
 CLIENT_ID = twd.client_id
 CLIENT_SECRET = twd.client_secret
 REDIRECT_URI = "http://localhost:8080"
-SCOPES = "user:read:email channel:manage:broadcast"
+SCOPES = "user:read:email channel:manage:broadcast bits:read moderator:read:followers channel:read:subscriptions"
 
 # Synchronisationsobjekt, damit das Programm wartet bis der Code da ist
 auth_event = threading.Event()
 token_info = None
 
 
-def execute():
+def gen():
     class Adaten:
         def __init__(self):
             self.atoken = None
@@ -131,5 +131,16 @@ def execute():
     return token
 
 
-# Wenn du das direkt testen willst:
+def refresh(token):
+    r = requests.post("https://id.twitch.tv/oauth2/token", data={
+    "grant_type": "refresh_token",
+    "refresh_token": token.rtoken,
+    "client_id": token.clientid,
+    "client_secret": token.clientsecret
+    })
+    new_token_info = r.json()
+    #print("Neuer Token:", new_token_info)
+    token.rtoken = new_token_info
+
+
 # execute()

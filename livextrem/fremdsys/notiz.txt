@@ -4,3 +4,14 @@ TwitchAPI, die öffentliche Daten ausliest.
 oauth:
 Authentifizierungsseite, die die Eingabemaske von Twitch öffnet und man sich im Browser einloggen soll.
 Daraus werden die Tokens gespeichert und an den ursprung zurück übergeben.
+
+tapi_data:
+Dort sind die requests für Daten oder Statistiken hinterlegt
+
+tapi_mod:
+Dort sind die requests für Interaktionen mit dem Stream (Modaktionen) hinerlegt
+
+
+
+Probleme:
+- Follower API: Es werden nur maximal 100 Follower ausgegeben. Muss noch überarbeitet werden
