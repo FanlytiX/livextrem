@@ -4,7 +4,7 @@ import oauth
 
 token = oauth.gen()
 
-print(token.displayname, token.loginname)
+#print(token.displayname, token.loginname)
 
 #result = tapi_mod.get_messages(token)
 #result = tapi_mod.test_irc_connection(token)
@@ -20,4 +20,10 @@ print(token.displayname, token.loginname)
 # print("+++++")
 # print(ec)
 
-#print(result)
+
+#result = tapi_mod.get_mod_history(token)
+
+# result = tapi_mod.ban_or_timeout_user(token, "dieFlaavina", 0, "War unanständig")
+# result = tapi_mod.unban_user(token, "dieFlaavina")
+
+# print(result)

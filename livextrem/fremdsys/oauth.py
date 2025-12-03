@@ -14,15 +14,22 @@ CLIENT_SECRET = twd.client_secret
 REDIRECT_URI = "http://localhost:8080"
 
 # >>> SCOPES wurden hier sauber integriert <<<
-SCOPES = (
-    "user:read:email "
-    "channel:manage:broadcast "
-    "bits:read "
-    "moderator:read:followers "
-    "channel:read:subscriptions "
-    "chat:read "
-    "chat:edit"
-)
+SCOPES = [
+    "user:read:email",
+    "channel:manage:broadcast",
+    "bits:read",
+    "moderator:read:followers",
+    "channel:read:subscriptions",
+    "chat:read",
+    "chat:edit",
+    "moderation:read",
+    "moderator:read:banned_users",
+    "moderator:read:blocked_terms",
+    "moderator:read:automod_settings",
+    "moderator:manage:banned_users",
+    "moderator:manage:blocked_terms"
+]
+
 
 # Synchronisationsobjekt
 auth_event = threading.Event()
@@ -88,14 +95,16 @@ def gen():
 
     threading.Thread(target=start_server, daemon=True).start()
 
-    # Browser öffnen
+    # Liste → URL-kompatibler Scope-String
+    scope_string = "+".join(SCOPES)
+
     auth_url = (
         f"https://id.twitch.tv/oauth2/authorize"
         f"?client_id={CLIENT_ID}"
         f"&redirect_uri={REDIRECT_URI}"
         f"&response_type=code"
-        f"&scope={SCOPES.replace(' ', '+')}"
-    )
+        f"&scope={scope_string}"
+)
 
     print("Öffne Browser zur Anmeldung ...")
     webbrowser.open(auth_url)

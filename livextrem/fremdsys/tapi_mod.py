@@ -2,7 +2,7 @@ import socket
 import time
 import requests
 
-def get_live_messages(token):
+def get_live_messages(token): # Funktioniert nicht
     oauth_token = f"oauth:{token.atoken}"
     print(oauth_token)
     nickname = token.loginname
@@ -53,7 +53,7 @@ def get_live_messages(token):
     return messages
 
 
-def live_test_irc_connection(token):
+def live_test_irc_connection(token): # Bewertung ausstehend, wird möglicherweise nicht gebraucht
     oauth_token = f"oauth:{token.atoken}"
     nickname = token.loginname.lower()
     channel = token.loginname.lower()
@@ -85,7 +85,7 @@ def live_test_irc_connection(token):
     sock.close()
 
 
-def get_vod_chat(token):
+def get_vod_chat(token): # Fertig
     """
     Kombinierte Funktion:
     - Listet alle VODs mit Chat-Status
@@ -227,3 +227,211 @@ def get_vod_chat(token):
     print(f"✅ Chat geladen: {len(all_messages)} Nachrichten")
 
     return all_messages, vod_with_chat, 0
+
+
+def get_mod_history(token): # Kontrolle Ausstehend, funktioniert noch nicht
+    """
+    Setzt den eingeloggten Nutzer als Moderator seines eigenen Channels
+    und ruft anschließend die Moderations-Historie ab.
+
+    Voraussetzung:
+    - moderation:read Scope
+    - moderator:read:banned_users Scope
+    """
+
+    client_id = token.clientid
+    access_token = token.atoken
+    broadcaster_id = token.userid   # DEIN Kanal
+    user_id = token.userid          # DU als Mod
+
+    # === 1. Dich selbst als Moderator eintragen ================================
+    url_add_mod = (
+        f"https://api.twitch.tv/helix/moderation/moderators"
+        f"?broadcaster_id={broadcaster_id}"
+        f"&user_id={user_id}"
+    )
+
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.put(url_add_mod, headers=headers)
+
+    if response.status_code not in (204, 200):
+        print("❌ Konnte dich NICHT als Moderator setzen:", response.text)
+    else:
+        print("✅ Broadcaster erfolgreich als Moderator gesetzt!")
+
+    # === 2. Moderations-Historie laden =========================================
+
+    history_url = (
+        f"https://api.twitch.tv/helix/moderation/banned/events"
+        f"?broadcaster_id={broadcaster_id}"
+        f"&moderator_id={user_id}"
+    )
+
+    history_resp = requests.get(history_url, headers=headers).json()
+
+    if "data" not in history_resp:
+        print("❌ Keine Moderationsdaten gefunden:", history_resp)
+        return []
+
+    actions = []
+
+    for event in history_resp["data"]:
+        actions.append({
+            "event_id": event["id"],
+            "event_type": event["event_type"],
+            "moderator_id": event["moderator_id"],
+            "moderator_login": event["moderator_login"],
+            "user_id": event["user_id"],
+            "user_login": event["user_login"],
+            "reason": event["reason"],
+            "banned_at": event["banned_at"],
+            "ends_at": event.get("ends_at"),
+            "created_at": event["created_at"]
+        })
+
+    return actions
+
+
+def ban_or_timeout_user(token, username, duration=0, reason=""): # Fertig
+    """
+    Bannt oder timeoutet einen User im Twitch-Channel des Broadcasters.
+
+    Args:
+        token: OAuth-Token-Objekt mit clientid, atoken, userid
+        username (str): Loginname des Users, z.B. "troll123"
+        duration (int): Timeout-Dauer in Sekunden. 0 = Permanenter Ban.
+        reason (str): Optionaler Grund.
+
+    Returns:
+        int: 0 = Erfolg, sonst HTTP-Fehlercode
+    """
+    # 0	Erfolg
+    # 400	Ungültige Parameter
+    # 401	Token ungültig
+    # 403	Dir fehlen Scopes / Du bist kein Mod
+    # 404	User existiert nicht
+    # 429	Rate Limit
+    # 500+	Twitch kotzt ab
+
+    client_id = token.clientid
+    access_token = token.atoken
+    broadcaster_id = token.userid
+
+    # 1) User-ID zur Username ermitteln
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    user_lookup = requests.get(
+        f"https://api.twitch.tv/helix/users?login={username}",
+        headers=headers
+    ).json()
+
+    if "data" not in user_lookup or not user_lookup["data"]:
+        print("❌ User nicht gefunden:", username)
+        return 404
+
+    target_user_id = user_lookup["data"][0]["id"]
+
+    # 2) Ban/Timeout ausführen
+    ban_url = (
+        f"https://api.twitch.tv/helix/moderation/bans"
+        f"?broadcaster_id={broadcaster_id}"
+        f"&moderator_id={broadcaster_id}"
+    )
+
+    payload = {
+        "data": {
+            "user_id": target_user_id,
+            "duration": duration if duration > 0 else None,
+            "reason": reason
+        }
+    }
+
+    # Falls permanenter Bann → Twitch verlangt KEINE duration
+    if duration == 0:
+        del payload["data"]["duration"]
+
+    headers_json = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    resp = requests.post(ban_url, json=payload, headers=headers_json)
+
+    if resp.status_code in (200, 201, 204):
+        print(f"✅ Erfolg: User '{username}' wurde {'getimeouted' if duration else 'gebannt'}!")
+        return 0
+
+    print("❌ Fehler:", resp.status_code, resp.text)
+    return resp.status_code
+
+
+def unban_user(token, username): # Fertig
+    """
+    Hebt den Bann eines Users auf (Unban).
+
+    Args:
+        token: OAuth-Token-Objekt mit clientid, atoken, userid
+        username (str): Loginname des Users, z.B. "troll123"
+
+    Returns:
+        int: 0 = Erfolg, sonst HTTP-Fehlercode
+    """
+    
+    # 0	Erfolg
+    # 404	User nicht gefunden
+    # 403	Keine Rechte (fehlender Scope?)
+    # 401	OAuth ungültig
+    # 429	Rate-Limit
+    # 500+	Twitch hat Schluckauf
+    
+    client_id = token.clientid
+    access_token = token.atoken
+    broadcaster_id = token.userid
+
+    # 1) User-ID zum Username ermitteln
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    user_lookup = requests.get(
+        f"https://api.twitch.tv/helix/users?login={username}",
+        headers=headers
+    ).json()
+
+    if "data" not in user_lookup or not user_lookup["data"]:
+        print("❌ User nicht gefunden:", username)
+        return 404
+
+    target_user_id = user_lookup["data"][0]["id"]
+
+    # 2) Unban ausführen
+    unban_url = (
+        f"https://api.twitch.tv/helix/moderation/bans"
+        f"?broadcaster_id={broadcaster_id}"
+        f"&moderator_id={broadcaster_id}"
+        f"&user_id={target_user_id}"
+    )
+
+    headers_json = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    resp = requests.delete(unban_url, headers=headers_json)
+
+    if resp.status_code in (200, 204):
+        print(f"✅ Erfolg: User '{username}' wurde entbannt!")
+        return 0
+
+    print("❌ Fehler:", resp.status_code, resp.text)
+    return resp.status_code
