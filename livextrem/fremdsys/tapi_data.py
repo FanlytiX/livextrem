@@ -112,4 +112,3 @@ def sublist(token): # Ruft alle Abonnenten von Twitch eines Kanals ab und gibt N
     subslist = requests.get(f"https://api.twitch.tv/helix/subscriptions?broadcaster_id={token.userid}", headers=headers).json()
     subslist = extract_usernames(subslist)
     return subslist
-

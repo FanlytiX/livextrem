@@ -3,10 +3,9 @@ import webbrowser
 import requests
 import threading
 import urllib.parse
-from tw_privdata import Daten
+from . import tw_privdata
 
-
-twd = Daten()
+twd = tw_privdata.Daten()
 
 # === Twitch OAuth Daten ===
 CLIENT_ID = twd.client_id
