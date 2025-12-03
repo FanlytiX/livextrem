@@ -7,10 +7,10 @@ token = oauth.gen()
 print(token.atoken, token.rtoken, token.userid)
 
 
-abc = tapi_data.laststreams(token)
+#abc = tapi_data.laststreams(token)
 #tapi_data.topbits(token)
 #abc = tapi_data.followlist(token)
-#abc = tapi_data.sublist(token)
+abc = tapi_data.sublist(token)
 print(abc)
 
 def test_laststream(token):

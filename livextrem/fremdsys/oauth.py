@@ -8,12 +8,23 @@ from tw_privdata import Daten
 
 twd = Daten()
 
+# === Twitch OAuth Daten ===
 CLIENT_ID = twd.client_id
 CLIENT_SECRET = twd.client_secret
 REDIRECT_URI = "http://localhost:8080"
-SCOPES = "user:read:email channel:manage:broadcast bits:read moderator:read:followers channel:read:subscriptions"
 
-# Synchronisationsobjekt, damit das Programm wartet bis der Code da ist
+# >>> SCOPES wurden hier sauber integriert <<<
+SCOPES = (
+    "user:read:email "
+    "channel:manage:broadcast "
+    "bits:read "
+    "moderator:read:followers "
+    "channel:read:subscriptions "
+    "chat:read "
+    "chat:edit"
+)
+
+# Synchronisationsobjekt
 auth_event = threading.Event()
 token_info = None
 
@@ -35,7 +46,6 @@ def gen():
         def do_GET(self):
             global token_info
 
-            # Browser-Anfrage nach favicon ignorieren
             if self.path.startswith("/favicon.ico"):
                 self.send_response(204)
                 self.end_headers()
@@ -46,7 +56,6 @@ def gen():
                 code = params["code"][0]
                 print("Authorization Code erhalten:", code)
 
-                # Access Token anfordern
                 token_url = "https://id.twitch.tv/oauth2/token"
                 data = {
                     "client_id": CLIENT_ID,
@@ -55,39 +64,54 @@ def gen():
                     "grant_type": "authorization_code",
                     "redirect_uri": REDIRECT_URI
                 }
+
                 r = requests.post(token_url, data=data)
                 token_info = r.json()
 
-                # Antwort an Browser (korrekt als Bytes)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
                 self.wfile.write("<h2>Login erfolgreich! Du kannst das Fenster schließen.</h2>".encode("utf-8"))
 
-                # Signalisiere Hauptprogramm, dass wir fertig sind
                 auth_event.set()
-
-                # Server sauber beenden
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
             else:
                 self.send_response(400)
                 self.end_headers()
 
-    token = Adaten()  # Objekt mit den Tokens und Gültigkeit
+    token = Adaten()
 
-    # Server im Hintergrund starten
+    # Server starten
     def start_server():
         server = http.server.HTTPServer(("localhost", 8080), OAuthHandler)
         server.serve_forever()
 
-    def safe():
-        print("\n✅ Login abgeschlossen!")
-        token.atoken = token_info.get("access_token")
-        token.rtoken = token_info.get("refresh_token")
-        token.expire = token_info.get("expires_in")
+    threading.Thread(target=start_server, daemon=True).start()
 
+    # Browser öffnen
+    auth_url = (
+        f"https://id.twitch.tv/oauth2/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&response_type=code"
+        f"&scope={SCOPES.replace(' ', '+')}"
+    )
+
+    print("Öffne Browser zur Anmeldung ...")
+    webbrowser.open(auth_url)
+
+    # Warten bis Token da ist
+    auth_event.wait()
+
+    # Token übernehmen
+    token.atoken = token_info.get("access_token")
+    token.rtoken = token_info.get("refresh_token")
+    token.expire = token_info.get("expires_in")
+
+    print("\n✅ Login abgeschlossen!")
+
+    # User-Daten laden
     def load_user_data():
-        """Lädt User-ID, Loginname und Anzeigename"""
         headers = {
             "Client-ID": CLIENT_ID,
             "Authorization": f"Bearer {token.atoken}"
@@ -103,24 +127,6 @@ def gen():
         token.loginname = data["login"]
         token.displayname = data["display_name"]
 
-    # === Hauptlogik ===
-    threading.Thread(target=start_server, daemon=True).start()
-
-    # Twitch Login-Seite öffnen
-    auth_url = (
-        f"https://id.twitch.tv/oauth2/authorize"
-        f"?client_id={CLIENT_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope={SCOPES.replace(' ', '+')}"
-    )
-    print("Öffne Browser zur Anmeldung ...")
-    webbrowser.open(auth_url)
-
-    # Auf erfolgreiche Anmeldung warten
-    auth_event.wait()
-
-    safe()
     load_user_data()
 
     print(f"\n👤 Eingeloggter Nutzer:")
@@ -132,15 +138,16 @@ def gen():
 
 
 def refresh(token):
-    r = requests.post("https://id.twitch.tv/oauth2/token", data={
-    "grant_type": "refresh_token",
-    "refresh_token": token.rtoken,
-    "client_id": token.clientid,
-    "client_secret": token.clientsecret
-    })
+    r = requests.post(
+        "https://id.twitch.tv/oauth2/token",
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": token.rtoken,
+            "client_id": token.clientid,
+            "client_secret": token.clientsecret
+        }
+    )
     new_token_info = r.json()
-    #print("Neuer Token:", new_token_info)
-    token.rtoken = new_token_info
-
-
-# execute()
+    token.atoken = new_token_info.get("access_token")
+    token.rtoken = new_token_info.get("refresh_token")
+    token.expire = new_token_info.get("expires_in")
