@@ -309,14 +309,14 @@ def ban_or_timeout_user(token, username, duration=0, reason=""): # Fertig
 
     Returns:
         int: 0 = Erfolg, sonst HTTP-Fehlercode
+        0   Erfolg, 
+        400	Ungültige Parameter, 
+        401	Token ungültig, 
+        403	Dir fehlen Scopes / Du bist kein Mod, 
+        404	User existiert nicht, 
+        429	Rate Limit, 
+        500+	Twitch kotzt ab
     """
-    # 0	Erfolg
-    # 400	Ungültige Parameter
-    # 401	Token ungültig
-    # 403	Dir fehlen Scopes / Du bist kein Mod
-    # 404	User existiert nicht
-    # 429	Rate Limit
-    # 500+	Twitch kotzt ab
 
     client_id = token.clientid
     access_token = token.atoken
@@ -384,14 +384,13 @@ def unban_user(token, username): # Fertig
 
     Returns:
         int: 0 = Erfolg, sonst HTTP-Fehlercode
+        0 Erfolg, 
+        404	User nicht gefunden, 
+        403	Keine Rechte (fehlender Scope?), 
+        401	OAuth ungültig, 
+        429	Rate-Limit, 
+        500+	Twitch hat Schluckauf
     """
-    
-    # 0	Erfolg
-    # 404	User nicht gefunden
-    # 403	Keine Rechte (fehlender Scope?)
-    # 401	OAuth ungültig
-    # 429	Rate-Limit
-    # 500+	Twitch hat Schluckauf
     
     client_id = token.clientid
     access_token = token.atoken

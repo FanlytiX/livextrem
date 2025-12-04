@@ -1,23 +1,32 @@
 from fremdsys import oauth, tapi_data, tapi_mod
-import tkinter as tk
+import customtkinter as ctk
 import moderator_dashboard
 import os
-import customtkinter as ctk
 import subprocess
 import sys
 
-root = tk.Tk()
-root.geometry("200x150")
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+root = ctk.CTk()
+root.geometry("200x200")
 root.title("Starthilfe")
 
-def f_bn1():
-    print("Anmeldung geklickt")
+def on_close():
+    print("Beende Anwendung…")
+    root.destroy()
+    exit()
+
+def f_twlogon():
     global token
     token = oauth.gen()
-    if token != []:
-        tk.Label(root, text="Angemeldet", fg="green").pack()
+    lbl_status.configure(text="Angemeldet", text_color="green")
 
-def f_bn2():
+def f_twrefresh():
+    oauth.refresh(token)
+    print(token.atoken, token.rtoken)
+
+def f_moddshb():
     print("Mod Dashboard geklickt")
     def starte_dashboard():
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,12 +34,23 @@ def f_bn2():
         subprocess.Popen([sys.executable, script_path])
     starte_dashboard()
 
-def f_bn3():
+def f_mangdshb():
     print("Manager Dashboard geklickt")
 
-tk.Label(root, text="").pack()
-bn1 = tk.Button(root, text="Twitch Anmelden", command=f_bn1).pack()
-bn2 = tk.Button(root, text="Mod Dashboard", command=f_bn2).pack()
-bd3 = tk.Button(root, text="Manager Dashboard", command=f_bn3).pack()
+lbl_status = ctk.CTkLabel(root, text="")
+lbl_status.pack(pady=5)
 
+bn_twlogon = ctk.CTkButton(root, text="Twitch Anmelden", command=f_twlogon)
+bn_twlogon.pack(pady=2)
+
+bn_twrefresh = ctk.CTkButton(root, text="Twitch Refresh", command=f_twrefresh)
+bn_twrefresh.pack(pady=2)
+
+bn_moddshb = ctk.CTkButton(root, text="Mod Dashboard", command=f_moddshb)
+bn_moddshb.pack(pady=2)
+
+bn_mangdshb = ctk.CTkButton(root, text="Manager Dashboard", command=f_mangdshb)
+bn_mangdshb.pack(pady=2)
+
+root.protocol("WM_DELETE_WINDOW", on_close)
 root.mainloop()

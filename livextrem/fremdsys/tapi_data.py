@@ -88,7 +88,10 @@ def topbits(token):
     return bits
 
 
-def followlist(token): # Ruft alle Follower ab und gibt sie als Liste zurück
+def followlist(token): # Fertig
+    """
+    Ruft alle aktuellen Follower auf und gib sie als Liste zurück
+    """
     def extract_usernames(flwrlist): # Filtert die Nutzernamen heraus, mehr wird nicht benötigt
         usernames = []
         for entry in flwrlist["data"]:
@@ -101,7 +104,10 @@ def followlist(token): # Ruft alle Follower ab und gibt sie als Liste zurück
     return flwrlist
 
 
-def sublist(token): # Ruft alle Abonnenten von Twitch eines Kanals ab und gibt NUR DIE NAMEN als Liste zurück.
+def sublist(token): # Fertig
+    """
+    Ruft alle aktuellen Abonnenten (Subs) auf und gibt sie als Liste zurück.
+    """
     def extract_usernames(subslist): # Filtert die Nutzernamen heraus, mehr wird nicht benötigt
         usernames = []
         for entry in subslist["data"]:

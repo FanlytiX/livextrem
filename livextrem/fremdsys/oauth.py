@@ -34,8 +34,23 @@ SCOPES = [
 auth_event = threading.Event()
 token_info = None
 
-
 def gen():
+    """
+    Meldet den Benutzer neu an. Sollte der Benutzer bereits angemeldet sein, wird die Anmeldung übersprungen.
+    """
+    global token
+    if 'token' in globals() and token.atoken is not None:
+        print("Benutzer ist bereits angemeldet")
+        return token
+
+    token = gen_direct()
+    return token
+
+
+def gen_direct():
+    """
+    Direkte Anmeldung des Benutzers, ohne Prüfung, ob der Nutzer angemeldet ist.
+    """
     class Adaten:
         def __init__(self):
             self.atoken = None
@@ -47,7 +62,9 @@ def gen():
             self.loginname = None
             self.displayname = None
 
-    # Lokaler HTTP-Handler für Redirect
+    # --- Server-Objekt später von außen erreichbar machen ---
+    server_instance = None
+
     class OAuthHandler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             global token_info
@@ -80,7 +97,10 @@ def gen():
                 self.wfile.write("<h2>Login erfolgreich! Du kannst das Fenster schließen.</h2>".encode("utf-8"))
 
                 auth_event.set()
-                threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+                # <<< Hier das saubere, garantierte Shutdown >>>
+                threading.Thread(target=server_instance.shutdown, daemon=True).start()
+
             else:
                 self.send_response(400)
                 self.end_headers()
@@ -89,8 +109,9 @@ def gen():
 
     # Server starten
     def start_server():
-        server = http.server.HTTPServer(("localhost", 8080), OAuthHandler)
-        server.serve_forever()
+        nonlocal server_instance
+        server_instance = http.server.HTTPServer(("localhost", 8080), OAuthHandler)
+        server_instance.serve_forever()
 
     threading.Thread(target=start_server, daemon=True).start()
 
@@ -146,6 +167,9 @@ def gen():
 
 
 def refresh(token):
+    """
+    Aktualisiert den Token eines bereits angemeldeten Benutzers. Der Token läuft nach 4 Stunden ab und muss durch den Refresh-Token aktualisiert werden.
+    """
     r = requests.post(
         "https://id.twitch.tv/oauth2/token",
         data={
