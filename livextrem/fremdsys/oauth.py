@@ -170,6 +170,10 @@ def refresh(token):
     """
     Aktualisiert den Token eines bereits angemeldeten Benutzers. Der Token läuft nach 4 Stunden ab und muss durch den Refresh-Token aktualisiert werden.
     """
+    if token is None:
+        print("Benutzer ist nicht angemeldet.")
+        return
+
     r = requests.post(
         "https://id.twitch.tv/oauth2/token",
         data={
