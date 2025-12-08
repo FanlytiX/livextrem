@@ -38,7 +38,7 @@ def f_moddshb():
     def starte_dashboard():
         current_dir = os.path.dirname(os.path.abspath(__file__))
         # ZIEL: moderator_dashboard1.py
-        script_path = os.path.join(current_dir, "moderator_dashboard1.py")
+        script_path = os.path.join(current_dir, "moderator_dashboard.py")
         
         # Basis-Befehl
         cmd = [sys.executable, script_path]
