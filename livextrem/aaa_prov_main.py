@@ -37,8 +37,25 @@ def f_moddshb():
     print("Mod Dashboard geklickt")
     def starte_dashboard():
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        script_path = os.path.join(current_dir, "moderator_dashboard.py")
-        subprocess.Popen([sys.executable, script_path])
+        # ZIEL: moderator_dashboard1.py
+        script_path = os.path.join(current_dir, "moderator_dashboard1.py")
+        
+        # Basis-Befehl
+        cmd = [sys.executable, script_path]
+        
+        # ÄNDERUNG: Token-Daten anhängen, falls vorhanden
+        if token:
+            print(f"Übergebe Login an Dashboard: {token.displayname}")
+            # Reihenfolge: [script, atoken, rtoken, displayname, clientid, clientsecret, userid, loginname]
+            cmd.append(str(token.atoken))
+            cmd.append(str(token.rtoken))
+            cmd.append(str(token.displayname))
+            cmd.append(str(token.clientid))
+            cmd.append(str(token.clientsecret))
+            cmd.append(str(token.userid))
+            cmd.append(str(token.loginname))
+            
+        subprocess.Popen(cmd)
     starte_dashboard()
 
 def f_mangdshb():
