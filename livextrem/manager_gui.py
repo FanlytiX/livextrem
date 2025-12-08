@@ -9,21 +9,27 @@ import mysql.connector  # <-- für die DB-Verbindung
 
 
 # --- KONFIGURATION & FARBEN (Dein Design) ---
+# --- KONFIGURATION & FARBEN (Dein Design) ---
 class Config:
-    # Farben an das gemeinsame Theme angepasst
-    BG_WHITE = "gray95"          # Grund-Hintergrund (passt zu CTk.fg_color)
-    PANEL_BG = "gray90"          # Panels / Container
-    PANEL_ACCENT = "gray80"      # leichte Absetzung / Trenner
-    HEADER_ORANGE = "#1c31ba"    # <- jetzt dein Primary-Blue (Buttons, Header)
-    HEADER_HOVER = "#14375e"     # Hover-Blue wie im Theme
-    SIDEBAR_BLUE = "#1c31ba"     # Navigation aktiv
-    SIDEBAR_HOVER = "#325882"    # Navigation hover
-    TEXT_DARK = "gray14"         # Standard-Textfarbe helles Theme
-    TEXT_LIGHT = "white"
+    # Farben: [light, dark]  -> CTk nimmt automatisch den richtigen Wert
+    BG_WHITE      = ["gray95", "#111111"]   # Fenster-Hintergrund
+    PANEL_BG      = ["gray90", "#181818"]   # Panels / Container
+    PANEL_ACCENT  = ["gray80", "#262626"]   # leichte Absetzung / Trenner
+
+    # Primärfarbe: Light = dein Blau, Dark = Orange wie im Moderator-Tool
+    HEADER_ORANGE = ["#1c31ba", "#D2601A"]
+    HEADER_HOVER  = ["#14375e", "#B44E12"]
+
+    # Navigation: in Dark auch Orange
+    SIDEBAR_BLUE  = ["#1c31ba", "#D2601A"]
+    SIDEBAR_HOVER = ["#325882", "#B44E12"]
+
+    TEXT_DARK  = ["gray14", "gray90"]
+    TEXT_LIGHT = ["white",  "white"]
 
     DATA_FILE = "livextrem_data.json"
 
-    # --- DB-Konfiguration (unverändert, nur optik wollten wir ja ändern) ---
+    # --- DB-Konfiguration (unverändert) ---
     DB_HOST = "88.218.227.14"
     DB_PORT = 3306
     DB_USER = "livextrem"
@@ -31,11 +37,12 @@ class Config:
     DB_NAME = "livextrem"
 
     # --- CustomTkinter Theme setzen ---
-    ctk.set_appearance_mode("light")
+    ctk.set_appearance_mode("light")  # Start immer im Light-Mode
 
     # JSON-Theme im gleichen Ordner wie dieses Script
     THEME_PATH = os.path.join(os.path.dirname(__file__), "style.json")
     ctk.set_default_color_theme(THEME_PATH)
+
 
 
 
@@ -291,6 +298,7 @@ class ManagerDashboard(ctk.CTk):
         self.show_view("Startseite")
 
     # --- VIEW MANAGER ---
+       # --- VIEW MANAGER ---
     def show_view(self, view_name):
 
         for widget in self.main_content_area.winfo_children():
@@ -309,12 +317,31 @@ class ManagerDashboard(ctk.CTk):
         elif view_name == "Einstellungen":
             self._render_placeholder_view(view_name)
 
-        self.main_title = ctk.CTkLabel(self.main_content_area,
-                                       text=f"Manager-Dashboard: {view_name}",
-                                       font=ctk.CTkFont(size=28, weight="bold"),
-                                       text_color=Config.TEXT_DARK,
-                                       anchor="w")
-        self.main_title.grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 20), sticky="ew")
+        self.main_title = ctk.CTkLabel(
+            self.main_content_area,
+            text=f"Manager-Dashboard: {view_name}",
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color=Config.TEXT_DARK,
+            anchor="w"
+        )
+        self.main_title.grid(row=0, column=0, columnspan=3,
+                             padx=10, pady=(10, 20), sticky="ew")
+
+    def _toggle_theme(self):
+        """Light/Dark-Mode umschalten."""
+        current = ctk.get_appearance_mode().lower()  # "light" / "dark"
+
+        if current == "light":
+            ctk.set_appearance_mode("dark")
+            if hasattr(self, "theme_toggle_button"):
+                # Dark ist aktiv → Button zeigt Sonne (zurück zu Light)
+                self.theme_toggle_button.configure(text="☀")
+        else:
+            ctk.set_appearance_mode("light")
+            if hasattr(self, "theme_toggle_button"):
+                # Light ist aktiv → Button zeigt Mond (Dark einschalten)
+                self.theme_toggle_button.configure(text="🌙")
+
 
     # --- Full Calendar View ---
     def _render_full_calendar_view(self):
@@ -697,56 +724,76 @@ class ManagerDashboard(ctk.CTk):
                      text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
 
     # --- SETUP DER SIDEBAR ---
+          # --- SETUP DER SIDEBAR ---
     def _setup_sidebar(self):
         self.sidebar_frame = ctk.CTkFrame(self, width=200, corner_radius=0, fg_color=Config.BG_WHITE)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(7, weight=1)
+        self.sidebar_frame.grid_rowconfigure(8, weight=1)
 
         # Logo laden
-        logo_path = os.path.join(os.path.dirname(__file__), "images",
-        "logo.png")
+        logo_path = os.path.join(os.path.dirname(__file__), "images", "logo.png")
         try:
             self.logo_image = ctk.CTkImage(
                 light_image=Image.open(logo_path),
                 size=(180, 60)
             )
             self.logo_label = ctk.CTkLabel(self.sidebar_frame, image=self.logo_image, text="")
-        except Exception as e:
-            print(f"Logo konnte nicht geladen werden: {e}")
-            self.logo_label = ctk.CTkLabel(self.sidebar_frame,
-                                           text="LIVE XTREM",
-                                           font=ctk.CTkFont(size=24, weight="bold", family="Inter"),
-                                           text_color=Config.HEADER_ORANGE)
+        except Exception:
+            self.logo_label = ctk.CTkLabel(
+                self.sidebar_frame,
+                text="LIVE XTREM",
+                font=ctk.CTkFont(size=24, weight="bold", family="Inter"),
+                text_color=Config.HEADER_ORANGE
+            )
 
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 5), sticky="w")
 
+        # 🌙 Dark/Light Toggle Button
+        self.theme_toggle_button = ctk.CTkButton(
+            self.sidebar_frame,
+            text="🌙",
+            width=30,
+            height=30,
+            command=self._toggle_theme,
+            fg_color="transparent",
+            hover_color=Config.PANEL_ACCENT,
+            text_color=Config.TEXT_DARK,
+            corner_radius=15
+        )
+        self.theme_toggle_button.grid(row=0, column=1, padx=(0, 10), pady=(20, 0), sticky="ne")
+
+
+        # Navigation
         nav_items = [
-            ("Startseite", 1),
-            ("Termine", 2),
-            ("Kalender", 3),
-            ("Streamer", 4),
+            ("Startseite", 2),
+            ("Termine", 3),
+            ("Kalender", 4),
+            ("Streamer", 5),
         ]
 
-        for i, (text, row) in enumerate(nav_items):
-            button = ctk.CTkButton(self.sidebar_frame,
-                                   text=text,
-                                   command=lambda t=text: self.show_view(t),
-                                   fg_color="transparent",
-                                   hover_color=Config.PANEL_ACCENT,
-                                   text_color=Config.TEXT_DARK,
-                                   anchor="w",
-                                   compound="left",
-                                   corner_radius=10)
+        for text, row in nav_items:
+            button = ctk.CTkButton(
+                self.sidebar_frame,
+                text=text,
+                command=lambda t=text: self.show_view(t),
+                fg_color="transparent",
+                hover_color=Config.PANEL_ACCENT,
+                text_color=Config.TEXT_DARK,
+                anchor="w",
+                compound="left",
+                corner_radius=10
+            )
             button.grid(row=row, column=0, padx=10, pady=5, sticky="ew")
             self.nav_buttons[text] = button
 
-        
-
-        self.user_id_label = ctk.CTkLabel(self.sidebar_frame,
-                                          text="Premium Edition",
-                                          text_color="gray",
-                                          font=ctk.CTkFont(size=10))
+        self.user_id_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="Premium Edition",
+            text_color="gray",
+            font=ctk.CTkFont(size=10)
+        )
         self.user_id_label.grid(row=9, column=0, padx=10, pady=(0, 10), sticky="w")
+
 
     def _highlight_active_nav(self, active_view):
         for name, button in self.nav_buttons.items():
