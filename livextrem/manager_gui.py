@@ -3,12 +3,10 @@ import datetime
 import calendar
 import json
 import os
-import uuid
 from PIL import Image   # für das Logo-Bild
 import mysql.connector  # <-- für die DB-Verbindung
 
 
-# --- KONFIGURATION & FARBEN (Dein Design) ---
 # --- KONFIGURATION & FARBEN (Dein Design) ---
 class Config:
     # Farben: [light, dark]  -> CTk nimmt automatisch den richtigen Wert
@@ -44,7 +42,15 @@ class Config:
     ctk.set_default_color_theme(THEME_PATH)
 
 
-
+# --- mögliche Streamer-Farben ---
+STREAMER_COLOR_CHOICES = {
+    "Grün":   "#008922",
+    "Pink":   "#ff009d",
+    "Rot":    "#FF0004",
+    "Gelb":   "#FFD854",
+    "Lila":   "#9B59B6",
+    "Türkis": "#00FFCC"
+}
 
 
 # --- DATENMODEL & PERSISTENZ (MySQL/MariaDB) ---
@@ -55,7 +61,6 @@ class DataManager:
     Nutzt Tabellen:
       - streamer
       - stream_planung
-    Die GUI spricht weiterhin über dieselben Methoden wie vorher.
     """
 
     def __init__(self, data_file):
@@ -77,36 +82,39 @@ class DataManager:
     # ----------- STREAMER-FUNKTIONEN -----------
 
     def get_all_streamers(self):
-        """Liest alle Streamer aus der Tabelle streamer."""
         self.cursor.execute("""
-            SELECT 
-                streamer_id AS id,
-                name,
-                COALESCE(status, 'Aktiv') AS status
-            FROM streamer
-            ORDER BY name
+        SELECT 
+            streamer_id AS id,
+            name,
+            COALESCE(status, 'Aktiv') AS status,
+            COALESCE(farbe, '#34C759') AS color_hex   -- <- nimmt jetzt die DB-Spalte "farbe"
+        FROM streamer
+        ORDER BY name
         """)
         return self.cursor.fetchall()
 
-    def add_streamer(self, name, status='Aktiv'):
+
+
+    def add_streamer(self, name, status='Aktiv', color='#34C759'):
         """Neuen Streamer in der DB anlegen."""
         self.cursor.execute("""
-            INSERT INTO streamer (name, plattform, email, status)
-            VALUES (%s, %s, %s, %s)
-        """, (name, '', '', status))
+            INSERT INTO streamer (name, plattform, email, status, farbe)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, '', '', status, color))
         self.conn.commit()
 
         new_id = self.cursor.lastrowid
-        return {'id': new_id, 'name': name, 'status': status}
+        return {'id': new_id, 'name': name, 'status': status, 'color': color}
 
-    def update_streamer(self, streamer_id, name, status):
+    def update_streamer(self, streamer_id, name, status, color):
         """Streamer in der DB aktualisieren."""
         self.cursor.execute("""
             UPDATE streamer
             SET name = %s,
-                status = %s
+                status = %s,
+                farbe = %s
             WHERE streamer_id = %s
-        """, (name, status, streamer_id))
+        """, (name, status, color, streamer_id))
         self.conn.commit()
         return self.cursor.rowcount > 0
 
@@ -118,8 +126,6 @@ class DataManager:
         )
         self.conn.commit()
         return self.cursor.rowcount > 0
-
-    
 
     # ------------ EVENT-FUNKTIONEN (stream_planung) ------------
 
@@ -148,10 +154,8 @@ class DataManager:
             print("DB-Fehler beim Event speichern:", err)
             raise
 
-
-
     def delete_event(self, event_id, date_key):
-        """Event über seine ID löschen (date_key wird nicht benötigt, bleibt nur für die Signatur)."""
+        """Event über seine ID löschen (date_key wird nicht benötigt)."""
         self.cursor.execute(
             "DELETE FROM stream_planung WHERE plan_id = %s",
             (event_id,)
@@ -162,8 +166,6 @@ class DataManager:
     def update_event(self, event_id, old_date_key, new_date_key,
                      new_title, new_streamer_id, new_streamer_name):
         """Event-Daten in stream_planung updaten."""
-
-        # Aus dem Datum-String ein richtiges DATETIME für MySQL machen
         neues_datum = new_date_key + " 00:00:00"
 
         self.cursor.execute("""
@@ -177,8 +179,6 @@ class DataManager:
         self.conn.commit()
         return self.cursor.rowcount > 0
 
-
-
     def get_event_by_id(self, event_id, date_key):
         """Ein einzelnes Event über seine ID holen."""
         self.cursor.execute("""
@@ -188,6 +188,7 @@ class DataManager:
                 sp.thema AS title,
                 sp.streamer_id AS streamerId,
                 s.name AS streamerName,
+                s.farbe AS streamerColor,
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
@@ -210,6 +211,7 @@ class DataManager:
                 sp.thema AS title,
                 sp.streamer_id AS streamerId,
                 s.name AS streamerName,
+                s.farbe AS streamerColor,
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
@@ -233,6 +235,7 @@ class DataManager:
                 sp.thema AS title,
                 sp.streamer_id AS streamerId,
                 s.name AS streamerName,
+                s.farbe AS streamerColor,
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
@@ -255,6 +258,7 @@ class DataManager:
                 sp.thema AS title,
                 sp.streamer_id AS streamerId,
                 s.name AS streamerName,
+                s.farbe AS streamerColor,
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
@@ -298,7 +302,6 @@ class ManagerDashboard(ctk.CTk):
         self.show_view("Startseite")
 
     # --- VIEW MANAGER ---
-       # --- VIEW MANAGER ---
     def show_view(self, view_name):
 
         for widget in self.main_content_area.winfo_children():
@@ -334,14 +337,11 @@ class ManagerDashboard(ctk.CTk):
         if current == "light":
             ctk.set_appearance_mode("dark")
             if hasattr(self, "theme_toggle_button"):
-                # Dark ist aktiv → Button zeigt Sonne (zurück zu Light)
                 self.theme_toggle_button.configure(text="☀")
         else:
             ctk.set_appearance_mode("light")
             if hasattr(self, "theme_toggle_button"):
-                # Light ist aktiv → Button zeigt Mond (Dark einschalten)
                 self.theme_toggle_button.configure(text="🌙")
-
 
     # --- Full Calendar View ---
     def _render_full_calendar_view(self):
@@ -388,7 +388,9 @@ class ManagerDashboard(ctk.CTk):
         dashboard_frame = ctk.CTkFrame(self.main_content_area, fg_color=Config.BG_WHITE, corner_radius=0)
         dashboard_frame.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         dashboard_frame.grid_columnconfigure((0, 1, 2), weight=1)
-        dashboard_frame.grid_rowconfigure((0, 1), weight=0)
+        dashboard_frame.grid_rowconfigure(0, weight=0)   # obere Zeile (Panels)
+        dashboard_frame.grid_rowconfigure(1, weight=1)   # unten: Bevorstehende Termine füllt den Rest
+
 
         # oben: Event-Panel + Kalender
         self._create_event_planning_panel(dashboard_frame, 0, 0)
@@ -402,90 +404,257 @@ class ManagerDashboard(ctk.CTk):
 
     # --- Termine View ---
     def _render_all_events_view(self):
-        events_view_container = ctk.CTkFrame(self.main_content_area, fg_color=Config.PANEL_BG, corner_radius=12)
+        events_view_container = ctk.CTkFrame(
+            self.main_content_area,
+            fg_color=Config.PANEL_BG,
+            corner_radius=12
+        )
         events_view_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
         events_view_container.grid_columnconfigure(0, weight=1)
-        events_view_container.grid_rowconfigure(1, weight=1)
+        events_view_container.grid_rowconfigure(2, weight=1)
 
-        ctk.CTkLabel(events_view_container, text="Übersicht aller geplanten Events",
-                     font=ctk.CTkFont(size=18, weight="bold"),
-                     text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        # Titel
+        ctk.CTkLabel(
+            events_view_container,
+            text="Übersicht aller geplanten Events",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=Config.TEXT_DARK
+        ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
 
-        self.all_events_list_frame = ctk.CTkScrollableFrame(events_view_container, fg_color=Config.BG_WHITE, corner_radius=10, label_text="Alle Events (Historisch und Zukünftig)")
-        self.all_events_list_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
-        self.all_events_list_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        self.all_events_list_frame.grid_columnconfigure(4, weight=0)
+        # --- Suchfeld für Streamername ---
+        search_frame = ctk.CTkFrame(events_view_container, fg_color="transparent")
+        search_frame.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
+        search_frame.grid_columnconfigure(0, weight=1)
+
+        self.event_search_var = ctk.StringVar(value="")
+
+        self.event_search_entry = ctk.CTkEntry(
+            search_frame,
+            placeholder_text="Streamer-Namen eingeben...",
+            textvariable=self.event_search_var,
+            corner_radius=8
+        )
+        self.event_search_entry.grid(row=0, column=0, padx=(0, 10), pady=0, sticky="ew")
+
+        ctk.CTkButton(
+            search_frame,
+            text="Suchen",
+            command=self.update_all_events_list,
+            fg_color=Config.SIDEBAR_BLUE,
+            hover_color=Config.SIDEBAR_HOVER,
+            width=80
+        ).grid(row=0, column=1, padx=(0, 10), pady=0)
+
+        ctk.CTkButton(
+            search_frame,
+            text="Alle",
+            command=self._reset_event_search,
+            fg_color="gray",
+            hover_color="darkgray",
+            width=60
+        ).grid(row=0, column=2, pady=0)
+
+        # Scroll-Liste
+        self.all_events_list_frame = ctk.CTkScrollableFrame(
+            events_view_container,
+            fg_color=Config.BG_WHITE,
+            corner_radius=10,
+            label_text="Alle Events (Historisch und Zukünftig)"
+        )
+        self.all_events_list_frame.grid(row=2, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        self.all_events_list_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
+        self.all_events_list_frame.grid_columnconfigure(5, weight=0)
+
 
         self.update_all_events_list()
 
     def update_all_events_list(self):
 
+                # Deutsche Wochentage Mapping
+        de_weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag",
+                       "Freitag", "Samstag", "Sonntag"]
+
+        # HEUTIGES DATUM für Vergleich
+        today = datetime.date.today()
+
+
         if not hasattr(self, 'all_events_list_frame') or not self.all_events_list_frame.winfo_exists():
             return
 
+        # alte Einträge entfernen
         try:
             for widget in self.all_events_list_frame.winfo_children():
                 widget.destroy()
         except ctk.TclError:
             return
 
+        # --- Suchbegriff lesen (Streamername) ---
+        search_term = ""
+        if hasattr(self, "event_search_var"):
+            value = self.event_search_var.get()
+            if value is not None:
+                search_term = value.strip().lower()
+
+        # Events aus DB holen
         events = self.data_manager.get_all_events_sorted()
 
+        # --- Falls Suchbegriff vorhanden ist, Events filtern ---
+        if search_term != "":
+            gefilterte_events = []
+            for event in events:
+                name = event.get("streamerName", "") or ""
+                if search_term in name.lower():
+                    gefilterte_events.append(event)
+            events = gefilterte_events
+
+        # Keine Events (oder nix gefunden)
         if not events:
-            ctk.CTkLabel(self.all_events_list_frame, text="Keine Events in der Datenbank gefunden.",
-                        text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=14)).grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=5)
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text="Keine Events in der Datenbank gefunden.",
+                text_color=Config.TEXT_DARK,
+                font=ctk.CTkFont(size=14)
+            ).grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=6)
             return
 
         # Header
         header_row = 0
-        ctk.CTkLabel(self.all_events_list_frame, text="Datum", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=0, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(self.all_events_list_frame, text="Wochentag", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=1, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(self.all_events_list_frame, text="Event-Titel", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=2, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(self.all_events_list_frame, text="Streamer", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=3, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(self.all_events_list_frame, text="Aktionen", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=4, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self.all_events_list_frame, text="Datum",
+                     font=ctk.CTkFont(weight="bold"),
+                     text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=0, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self.all_events_list_frame, text="Wochentag",
+                     font=ctk.CTkFont(weight="bold"),
+                     text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=1, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self.all_events_list_frame, text="Event-Titel",
+                     font=ctk.CTkFont(weight="bold"),
+                     text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=2, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self.all_events_list_frame, text="Streamer",
+                     font=ctk.CTkFont(weight="bold"),
+                     text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=3, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self.all_events_list_frame, text="Farbe",
+                     font=ctk.CTkFont(weight="bold"),
+                     text_color=Config.SIDEBAR_BLUE).grid(row=header_row, column=4, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(
+                        self.all_events_list_frame,
+                        text="Aktionen",
+                        font=ctk.CTkFont(weight="bold"),
+                        text_color=Config.SIDEBAR_BLUE
+                        ).grid(row=header_row, column=5, padx=10, pady=5, sticky="e")
 
-        ctk.CTkFrame(self.all_events_list_frame, height=2, fg_color=Config.PANEL_ACCENT).grid(row=header_row + 1, column=0, columnspan=5, sticky="ew", padx=5)
+
+        ctk.CTkFrame(
+            self.all_events_list_frame,
+            height=2,
+            fg_color=Config.PANEL_ACCENT
+        ).grid(row=header_row + 1, column=0, columnspan=6, sticky="ew", padx=5)
 
         # Deutsche Wochentage Mapping
-        de_weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+        de_weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag",
+                       "Freitag", "Samstag", "Sonntag"]
 
+        # Zeilen füllen
         for i, event in enumerate(events):
             row = i + 2
 
             date_obj = datetime.date.fromisoformat(event['date_key'])
             formatted_date = date_obj.strftime("%d.%m.%Y")
-
             weekday_name = de_weekdays[date_obj.weekday()]
 
-            # Datum
-            ctk.CTkLabel(self.all_events_list_frame, text=formatted_date, anchor="w").grid(row=row, column=0, padx=10, pady=5, sticky="w")
+            # ✅ Prüfen, ob der Termin in der Vergangenheit liegt
+            is_past = date_obj < today
 
-            # Wochentag Deutsch
-            ctk.CTkLabel(self.all_events_list_frame, text=weekday_name, anchor="w").grid(row=row, column=1, padx=10, pady=5, sticky="w")
+            # Farben je nach Vergangenheit / Zukunft
+            normal_text = Config.TEXT_DARK
+            past_text   = "gray60"
+
+            normal_link = Config.SIDEBAR_BLUE
+            past_link   = "gray60"
+
+            row_text_color = past_text if is_past else normal_text
+            row_link_color = past_link if is_past else normal_link
+
+
+                        # Datum
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text=formatted_date,
+                anchor="w",
+                text_color=row_text_color
+            ).grid(row=row, column=0, padx=10, pady=5, sticky="w")
+
+            # Wochentag
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text=weekday_name,
+                anchor="w",
+                text_color=row_text_color
+            ).grid(row=row, column=1, padx=10, pady=5, sticky="w")
 
             # Titel
-            ctk.CTkLabel(self.all_events_list_frame, text=event['title'], anchor="w").grid(row=row, column=2, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text=event['title'],
+                anchor="w",
+                text_color=row_text_color
+            ).grid(row=row, column=2, padx=10, pady=5, sticky="w")
 
-            # Streamer
-            ctk.CTkLabel(self.all_events_list_frame, text=event['streamerName'], anchor="w", text_color=Config.SIDEBAR_BLUE).grid(row=row, column=3, padx=10, pady=5, sticky="w")
+            # Streamer-Name (Link-Optik)
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text=event['streamerName'],
+                anchor="w",
+                text_color=row_link_color
+            ).grid(row=row, column=3, padx=10, pady=5, sticky="w")
+
+            # FARBPUNKT (Streamer-Farbe) – kann normal bleiben
+            color_hex = event.get("streamerColor") or Config.SIDEBAR_BLUE
+            ctk.CTkLabel(
+                self.all_events_list_frame,
+                text="●",
+                text_color=color_hex,
+                font=ctk.CTkFont(size=26, weight="bold")
+            ).grid(row=row, column=4, padx=10, pady=0, sticky="w")
+
 
             # Buttons
             action_frame = ctk.CTkFrame(self.all_events_list_frame, fg_color="transparent")
-            action_frame.grid(row=row, column=4, padx=10, pady=5, sticky="e")
+            action_frame.grid(row=row, column=5, padx=10, pady=5, sticky="e")
 
-            ctk.CTkButton(action_frame, text="Bearbeiten",
-                        command=lambda e=event: self._show_edit_event_dialog(e),
-                        fg_color=Config.SIDEBAR_BLUE, hover_color=Config.SIDEBAR_HOVER,
-                        width=80, height=25, font=ctk.CTkFont(size=12)).grid(row=0, column=0, padx=(0, 5))
+            ctk.CTkButton(
+                action_frame,
+                text="Bearbeiten",
+                command=lambda e=event: self._show_edit_event_dialog(e),
+                fg_color=Config.SIDEBAR_BLUE,
+                hover_color=Config.SIDEBAR_HOVER,
+                width=80,
+                height=25,
+                font=ctk.CTkFont(size=12)
+            ).grid(row=0, column=0, padx=(0, 5))
 
-            ctk.CTkButton(action_frame, text="Löschen",
-                        command=lambda e=event: self._confirm_delete_event(e),
-                        fg_color="red", hover_color="#A00000",
-                        width=80, height=25, font=ctk.CTkFont(size=12)).grid(row=0, column=1)
+            ctk.CTkButton(
+                action_frame,
+                text="Löschen",
+                command=lambda e=event: self._confirm_delete_event(e),
+                fg_color="red",
+                hover_color="#A00000",
+                width=80,
+                height=25,
+                font=ctk.CTkFont(size=12)
+            ).grid(row=0, column=1)
 
-            # Linie
-            ctk.CTkFrame(self.all_events_list_frame, height=1, fg_color=Config.PANEL_ACCENT).grid(row=row+1, column=0, columnspan=5, sticky="ew", padx=5)
+            # Trennlinie
+            ctk.CTkFrame(
+                self.all_events_list_frame,
+                height=1,
+                fg_color=Config.PANEL_ACCENT
+            ).grid(row=row + 1, column=0, columnspan=6, sticky="ew", padx=5)
 
+
+    def _reset_event_search(self):
+        """Suchfeld leeren und alle Events anzeigen."""
+        if hasattr(self, "event_search_var"):
+            self.event_search_var.set("")
+        self.update_all_events_list()
 
     def _show_edit_event_dialog(self, event):
         """Opens the dialog to edit an existing event."""
@@ -505,14 +674,13 @@ class ManagerDashboard(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(
-        dialog,
-        text=f"Sicher, dass du das Event '{event['title']}' löschen willst?",
-        text_color=Config.TEXT_DARK,
-        font=ctk.CTkFont(size=12, weight="bold"),   # 🔥 kleinere Schrift
-        wraplength=350,                             # 🔥 Zeilenumbruch aktiv
-        justify="center"                            # 🔥 Text schön zentrieren
+            dialog,
+            text=f"Sicher, dass du das Event '{event['title']}' löschen willst?",
+            text_color=Config.TEXT_DARK,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            wraplength=350,
+            justify="center"
         ).pack(padx=20, pady=15)
-
 
         button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
         button_frame.pack(pady=10)
@@ -538,7 +706,6 @@ class ManagerDashboard(ctk.CTk):
         streamer_frame = ctk.CTkFrame(self.main_content_area, fg_color=Config.BG_WHITE)
         streamer_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        # WICHTIG: Diese Zeile sorgt dafür, dass die Liste mitwächst
         streamer_frame.grid_rowconfigure(0, weight=1)
         streamer_frame.grid_rowconfigure(1, weight=0)
         streamer_frame.grid_columnconfigure(0, weight=1)
@@ -550,8 +717,8 @@ class ManagerDashboard(ctk.CTk):
         list_container.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(list_container, text="Alle Streamer verwalten",
-                    font=ctk.CTkFont(size=18, weight="bold"),
-                    text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+                     font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
 
         self.streamer_list_frame = ctk.CTkScrollableFrame(
             list_container, fg_color=Config.BG_WHITE, corner_radius=8
@@ -566,131 +733,204 @@ class ManagerDashboard(ctk.CTk):
         add_container.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(add_container, text="Neuen Streamer hinzufügen",
-                    font=ctk.CTkFont(size=16, weight="bold"),
-                    text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=20, pady=(15, 5), sticky="w")
+                     font=ctk.CTkFont(size=16, weight="bold"),
+                     text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=20, pady=(15, 5), sticky="w")
 
         self.new_streamer_entry = ctk.CTkEntry(add_container, placeholder_text="Name des neuen Streamers", corner_radius=8)
         self.new_streamer_entry.grid(row=1, column=0, padx=20, pady=(5, 10), sticky="ew")
 
         ctk.CTkButton(add_container, text="Hinzufügen",
-                    command=self._add_new_streamer,
-                    fg_color=Config.SIDEBAR_BLUE,
-                    hover_color=Config.SIDEBAR_HOVER,
-                    corner_radius=10).grid(row=2, column=0, padx=20, pady=(0, 15), sticky="ew")
-
+                      command=self._add_new_streamer,
+                      fg_color=Config.SIDEBAR_BLUE,
+                      hover_color=Config.SIDEBAR_HOVER,
+                      corner_radius=10).grid(row=2, column=0, padx=20, pady=(0, 15), sticky="ew")
 
     def update_streamer_list(self, list_frame):
         """Updates the streamer list in the streamer view."""
 
+        # alte Einträge löschen
         for widget in list_frame.winfo_children():
             widget.destroy()
 
+        # IMPORTANT:
+        # get_all_streamers() muss für jeden Streamer mindestens liefern:
+        #  - 'name'
+        #  - 'status'        (Aktiv / Pause / Inaktiv)
+        #  - 'color_hex'     (z.B. "#ffd854" für Gelb)
         streamers = self.data_manager.get_all_streamers()
 
-        # Header
-        ctk.CTkLabel(list_frame, text="NAME", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        ctk.CTkLabel(list_frame, text="STATUS", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=0, column=1, padx=10, pady=5)
-        ctk.CTkLabel(list_frame, text="AKTIONEN", font=ctk.CTkFont(weight="bold"), text_color=Config.SIDEBAR_BLUE).grid(row=0, column=2, padx=10, pady=5)
+                # ---- HEADER -------------------------------------------------
+        header_font = ctk.CTkFont(weight="bold")
 
-        # Spaltenbreiten sauber einstellen
+        ctk.CTkLabel(
+            list_frame, text="NAME",
+            font=header_font,
+            text_color=Config.SIDEBAR_BLUE,
+            anchor="w"
+        ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        ctk.CTkLabel(
+            list_frame, text="STATUS",
+            font=header_font,
+            text_color=Config.SIDEBAR_BLUE,
+            anchor="w"
+        ).grid(row=0, column=1, padx=10, pady=5, sticky="w")
+
+        # mittig über den Farb-Dots
+        ctk.CTkLabel(
+            list_frame, text="FARBE DES STREAMERS",
+            font=header_font,
+            text_color=Config.SIDEBAR_BLUE,
+            anchor="center",
+            justify="center"
+        ).grid(row=0, column=2, padx=10, pady=5, sticky="ew")
+
+        # mittig über den Buttons
+        ctk.CTkLabel(
+            list_frame, text="AKTIONEN",
+            font=header_font,
+            text_color=Config.SIDEBAR_BLUE,
+            anchor="center",
+            justify="center"
+        ).grid(row=0, column=3, padx=10, pady=5, sticky="ew")
+
+         # Spaltenbreiten
         list_frame.grid_columnconfigure(0, weight=4)   # Name
         list_frame.grid_columnconfigure(1, weight=1)   # Status
-        list_frame.grid_columnconfigure(2, weight=2)   # Aktionen
+        list_frame.grid_columnconfigure(2, weight=1)   # Streamer-Farbe
+        list_frame.grid_columnconfigure(3, weight=2)   # Aktionen
 
-        ctk.CTkFrame(list_frame, height=1, fg_color=Config.PANEL_ACCENT).grid(row=1, column=0, columnspan=3, sticky="ew")
 
+        # ---- KEINE STREAMER -------------------------------------------------
         if not streamers:
-            ctk.CTkLabel(list_frame, text="Keine Streamer vorhanden.", text_color="gray").grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="w")
+            ctk.CTkLabel(
+                list_frame,
+                text="Keine Streamer vorhanden.",
+                text_color="gray"
+            ).grid(row=2, column=0, columnspan=4, padx=10, pady=10, sticky="w")
             return
 
+        # ---- LISTE FÜLLEN ---------------------------------------------------
         for i, streamer in enumerate(streamers):
             row = i + 2
 
-            name = streamer.get('name', 'Unbekannt')
-            status = streamer.get('status', 'Aktiv')
+            name = streamer.get("name", "Unbekannt")
+            status = streamer.get("status", "Aktiv")
+            # hier wird die individuelle Streamer-Farbe erwartet
+            color_hex = streamer.get("color_hex", "#34C759")
 
             # Name
-            ctk.CTkLabel(list_frame, text=name, anchor="w").grid(row=row, column=0, padx=10, pady=5, sticky="w")
+            ctk.CTkLabel(
+                list_frame, text=name, anchor="w"
+            ).grid(row=row, column=0, padx=10, pady=5, sticky="w")
 
-            # Farbpunkte
-            if status == 'Aktiv':
-                dot_color = "#34C759"
+            # STATUS-TEXT (AKTIV / PAUSE)
+            if status == "Aktiv":
+                status_text = "AKTIV"
+                status_color = "#34C759"  # Grün
+            elif status == "Pause":
+                status_text = "PAUSE"
+                status_color = "#FFD60A"  # Gelb
             else:
-                dot_color = "#FFD60A"
+                status_text = status.upper()
+                status_color = "#FF3B30"  # Rot (optional für weitere Stati)
 
             ctk.CTkLabel(
                 list_frame,
+                text=status_text,
+                text_color=status_color,
+                font=ctk.CTkFont(size=14, weight="bold")
+            ).grid(row=row, column=1, padx=10, pady=5, sticky="w")
+
+
+            # FARBE DES STREAMERS (eigene Farbe)
+            ctk.CTkLabel(
+                list_frame,
                 text="●",
-                text_color=dot_color,
+                text_color=color_hex,
                 font=ctk.CTkFont(size=28)
-            ).grid(row=row, column=1, padx=10, pady=0)
+            ).grid(row=row, column=2, padx=10, pady=0, sticky="n")
+
 
             # Aktionen
             action_frame = ctk.CTkFrame(list_frame, fg_color="transparent")
-            action_frame.grid(row=row, column=2, padx=10, pady=5, sticky="e")
+            action_frame.grid(row=row, column=3, padx=10, pady=5, sticky="")
 
-            ctk.CTkButton(action_frame, text="Bearbeiten",
-                        command=lambda s=streamer: self._show_streamer_edit_dialog(s),
-                        fg_color=Config.SIDEBAR_BLUE, hover_color=Config.SIDEBAR_HOVER,
-                        width=80, height=25, font=ctk.CTkFont(size=12)).grid(row=0, column=0, padx=(0, 5))
 
-            ctk.CTkButton(action_frame, text="Löschen",
-                        command=lambda s=streamer: self._confirm_delete_streamer(s),
-                        fg_color="red", hover_color="#A00000",
-                        width=80, height=25, font=ctk.CTkFont(size=12)).grid(row=0, column=1)
+            ctk.CTkButton(
+                action_frame,
+                text="Bearbeiten",
+                command=lambda s=streamer: self._show_streamer_edit_dialog(s),
+                fg_color=Config.SIDEBAR_BLUE,
+                hover_color=Config.SIDEBAR_HOVER,
+                width=80, height=25,
+                font=ctk.CTkFont(size=12)
+            ).grid(row=0, column=0, padx=(0, 5))
 
-            ctk.CTkFrame(list_frame, height=1, fg_color=Config.PANEL_ACCENT).grid(row=row+1, column=0, columnspan=3, sticky="ew")
+            ctk.CTkButton(
+                action_frame,
+                text="Löschen",
+                command=lambda s=streamer: self._confirm_delete_streamer(s),
+                fg_color="red",
+                hover_color="#A00000",
+                width=80, height=25,
+                font=ctk.CTkFont(size=12)
+            ).grid(row=0, column=1)
 
+            ctk.CTkFrame(
+                list_frame, height=1, fg_color=Config.PANEL_ACCENT
+            ).grid(row=row + 1, column=0, columnspan=4, sticky="ew")
 
     def _show_streamer_edit_dialog(self, streamer):
-        """Opens the dialog to edit a streamer."""
-        dialog = StreamerDialog(self, streamer)
-        dialog.grab_set()
+            """Opens the dialog to edit a streamer."""
+            dialog = StreamerDialog(self, streamer)
+            dialog.grab_set()
 
     def _confirm_delete_streamer(self, streamer):
-        """Shows a confirmation dialog for deleting a streamer."""
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Streamer löschen")
-        dialog.geometry("400x150")
-        dialog.configure(fg_color=Config.BG_WHITE)
-        dialog.grab_set()
+            """Shows a confirmation dialog for deleting a streamer."""
+            dialog = ctk.CTkToplevel(self)
+            dialog.title("Streamer löschen")
+            dialog.geometry("400x150")
+            dialog.configure(fg_color=Config.BG_WHITE)
+            dialog.grab_set()
 
-        ctk.CTkLabel(dialog, text=f"Sicher, dass du '{streamer['name']}' löschen willst?",
-                     text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=14, weight="bold")).pack(padx=20, pady=15)
+            ctk.CTkLabel(dialog, text=f"Sicher, dass du '{streamer['name']}' löschen willst?",
+                        text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=14, weight="bold")).pack(padx=20, pady=15)
 
-        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        button_frame.pack(pady=10)
+            button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+            button_frame.pack(pady=10)
 
-        def delete_confirmed():
-            success = self.data_manager.delete_streamer(streamer['id'])
-            if success:
-                self.show_message_box('Streamer erfolgreich gelöscht.', 'success')
-                self.update_streamer_list(self.streamer_list_frame)
-                self.update_calendar()
-                self.update_upcoming_events()
-            else:
-                self.show_message_box('Fehler beim Löschen des Streamers.', 'error')
-            dialog.destroy()
+            def delete_confirmed():
+                success = self.data_manager.delete_streamer(streamer['id'])
+                if success:
+                    self.show_message_box('Streamer erfolgreich gelöscht.', 'success')
+                    self.update_streamer_list(self.streamer_list_frame)
+                    self.update_calendar()
+                    self.update_upcoming_events()
+                else:
+                    self.show_message_box('Fehler beim Löschen des Streamers.', 'error')
+                dialog.destroy()
 
-        ctk.CTkButton(button_frame, text="Löschen", command=delete_confirmed,
-                      fg_color="red", hover_color="#A00000", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=10)
+            ctk.CTkButton(button_frame, text="Löschen", command=delete_confirmed,
+                        fg_color="red", hover_color="#A00000", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=10)
 
-        ctk.CTkButton(button_frame, text="Abbrechen", command=dialog.destroy,
-                      fg_color="gray", hover_color="darkgray").grid(row=0, column=1, padx=10)
+            ctk.CTkButton(button_frame, text="Abbrechen", command=dialog.destroy,
+                        fg_color="gray", hover_color="darkgray").grid(row=0, column=1, padx=10)
 
     def _add_new_streamer(self):
-        name = self.new_streamer_entry.get().strip()
-        if name:
-            self.data_manager.add_streamer(name)
-            self.new_streamer_entry.delete(0, 'end')
-            self.show_message_box(f"Streamer '{name}' hinzugefügt.", 'success')
+            name = self.new_streamer_entry.get().strip()
+            if name:
+                # neue Streamer bekommen Standardfarbe Grün
+                self.data_manager.add_streamer(name)
+                self.new_streamer_entry.delete(0, 'end')
+                self.show_message_box(f"Streamer '{name}' hinzugefügt.", 'success')
 
-            if hasattr(self, 'streamer_list_frame') and self.streamer_list_frame.winfo_exists():
-                self.update_streamer_list(self.streamer_list_frame)
+                if hasattr(self, 'streamer_list_frame') and self.streamer_list_frame.winfo_exists():
+                    self.update_streamer_list(self.streamer_list_frame)
 
-            self._update_event_dialog_streamer_options()
-        else:
-            self.show_message_box("Bitte gib einen Namen ein.", 'warning')
+                self._update_event_dialog_streamer_options()
+            else:
+                self.show_message_box("Bitte gib einen Namen ein.", 'warning')
 
     def _update_event_dialog_streamer_options(self):
         """Aktualisiert die Streamer-Auswahl im Event-Dialog, falls dieser offen ist."""
@@ -722,9 +962,10 @@ class ManagerDashboard(ctk.CTk):
                      text=f"Funktionalität für '{view_name}' wird bald implementiert!",
                      font=ctk.CTkFont(size=24, weight="bold"),
                      text_color=Config.TEXT_DARK).grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
+        
+
 
     # --- SETUP DER SIDEBAR ---
-          # --- SETUP DER SIDEBAR ---
     def _setup_sidebar(self):
         self.sidebar_frame = ctk.CTkFrame(self, width=200, corner_radius=0, fg_color=Config.BG_WHITE)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
@@ -762,7 +1003,6 @@ class ManagerDashboard(ctk.CTk):
         )
         self.theme_toggle_button.grid(row=0, column=1, padx=(0, 10), pady=(20, 0), sticky="ne")
 
-
         # Navigation
         nav_items = [
             ("Startseite", 2),
@@ -793,7 +1033,6 @@ class ManagerDashboard(ctk.CTk):
             font=ctk.CTkFont(size=10)
         )
         self.user_id_label.grid(row=9, column=0, padx=10, pady=(0, 10), sticky="w")
-
 
     def _highlight_active_nav(self, active_view):
         for name, button in self.nav_buttons.items():
@@ -870,6 +1109,23 @@ class ManagerDashboard(ctk.CTk):
 
         self.calendar_day_buttons = []
 
+    def _get_day_color_from_events(self, events_for_day):
+        """Gibt die Farbe für einen Tag anhand der Streamer-Farben zurück."""
+        colors = []
+
+        for event in events_for_day:
+            c = event.get("streamerColor")
+            if c is not None and c != "":
+                if c not in colors:
+                    colors.append(c)
+
+        if len(colors) == 1:
+            return colors[0]          # genau eine Streamerfarbe
+        elif len(colors) > 1:
+            return "#FFD854"          # mehrere Streamer -> neutral Gelb
+        else:
+            return "#FFD854"          # keine Farbe gesetzt -> Gelb
+
     def update_calendar(self, full_view=False):
 
         # Welcher Kalender soll aktualisiert werden?
@@ -917,12 +1173,28 @@ class ManagerDashboard(ctk.CTk):
             events_for_day = self.data_manager.get_events_for_day(date_key)
             has_events = bool(events_for_day)
 
-            # Heute markieren
+            # Heute?
             is_today = date_key == today_iso
 
+            # Basisfarben (heute vs normal)
             fg_color = Config.HEADER_ORANGE if is_today else Config.PANEL_BG
             text_color = Config.TEXT_LIGHT if is_today else Config.TEXT_DARK
             hover_color = Config.HEADER_HOVER if is_today else Config.PANEL_ACCENT
+
+            # Border Standard
+            border_width = 0
+            border_color = None
+
+            # ---- Farben der Streamer analysieren ----
+            colors = []
+            if has_events:
+                for e in events_for_day:
+                    c = e.get("streamerColor")
+                    if c and c not in colors:
+                        colors.append(c)
+
+            has_multiple_colors = len(colors) > 1
+            single_color = colors[0] if len(colors) == 1 else None
 
             # --------- GROSSER KALENDER (Kalender-View) ----------
             if full_view:
@@ -931,8 +1203,20 @@ class ManagerDashboard(ctk.CTk):
 
                 if has_events:
                     text += f"\n({len(events_for_day)} Events)"
-                    fg_color = Config.PANEL_ACCENT
-                    text_color = Config.TEXT_DARK
+
+                    if not is_today:
+                        if has_multiple_colors:
+                            # Mehrere Streamer -> weißer Button mit gelbem Rand
+                            fg_color = "white"
+                            text_color = "#000000"
+                            hover_color = "#F2F2F2"
+                            border_width = 3
+                            border_color = "#FFD854"
+                        else:
+                            # Genau ein Streamer -> Button in Streamerfarbe
+                            if single_color:
+                                fg_color = single_color
+                                text_color = "#000000"
 
                 day_button = ctk.CTkButton(
                     container,
@@ -943,26 +1227,39 @@ class ManagerDashboard(ctk.CTk):
                     text_color=text_color,
                     height=height,
                     corner_radius=8,
-                    font=ctk.CTkFont(size=14, weight="bold")
+                    font=ctk.CTkFont(size=14, weight="bold"),
+                    border_width=border_width,
+                    border_color=border_color
                 )
 
             # --------- KLEINER KALENDER (Dashboard) ----------
             else:
                 text = f"{day}"
 
-                # Basis-Style vom Button (wie bisher)
+                # Basis-Style
                 btn_fg_color = fg_color
                 btn_hover_color = hover_color
                 btn_text_color = text_color
                 btn_font = ctk.CTkFont(size=12)
+                btn_border_width = 0
+                btn_border_color = None
 
-                # Wenn Events vorhanden sind (aber nicht heute):
-                # -> Hintergrund leicht anders, Text orange + fett
                 if has_events and not is_today:
-                    btn_fg_color = "#ffd854"     # 🔥 GELB für Events
-                    btn_hover_color = "#ffcc33"  # etwas dunkler beim Hover
-                    btn_text_color = "#000000"   # schwarzer Text
-                    btn_font = ctk.CTkFont(size=12, weight="bold")
+                    if has_multiple_colors:
+                        # Mehrere Streamer -> weißer Button mit gelbem Rand
+                        btn_fg_color = "white"
+                        btn_hover_color = "white"
+                        btn_text_color = "#000000"
+                        btn_font = ctk.CTkFont(size=12, weight="bold")
+                        btn_border_width = 2
+                        btn_border_color = "#FFD854"
+                    else:
+                        # Genau ein Streamer -> Button in Streamerfarbe
+                        if single_color:
+                            btn_fg_color = single_color
+                            btn_hover_color = single_color
+                            btn_text_color = "#000000"
+                            btn_font = ctk.CTkFont(size=12, weight="bold")
 
                 day_button = ctk.CTkButton(
                     container,
@@ -974,7 +1271,9 @@ class ManagerDashboard(ctk.CTk):
                     width=40,
                     height=40,
                     corner_radius=8,
-                    font=btn_font
+                    font=btn_font,
+                    border_width=btn_border_width,
+                    border_color=btn_border_color
                 )
 
             # Button platzieren
@@ -1006,55 +1305,129 @@ class ManagerDashboard(ctk.CTk):
             self.update_calendar(full_view=False)
 
     # --- PANEL 3: Upcoming Events ---
+        # --- PANEL 3: Upcoming Events ---
     def _create_upcoming_events_panel(self, parent_frame, row, column, columnspan=1):
-        self.upcoming_frame = ctk.CTkFrame(parent_frame, fg_color=Config.PANEL_BG, corner_radius=12)
-        self.upcoming_frame.grid(row=row, column=column, columnspan=columnspan, padx=10, pady=10, sticky="nsew")
+        # äußeres Panel (grau)
+        self.upcoming_frame = ctk.CTkFrame(
+            parent_frame,
+            fg_color=Config.PANEL_BG,
+            corner_radius=12
+        )
+        self.upcoming_frame.grid(
+            row=row,
+            column=column,
+            columnspan=columnspan,
+            padx=10,
+            pady=10,
+            sticky="nsew"          # Panel füllt die ganze Zeile
+        )
+
+        # damit die Liste im Panel „mitwächst“
+        self.upcoming_frame.grid_rowconfigure(1, weight=1)
         self.upcoming_frame.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(self.upcoming_frame, text="Bevorstehende Termine",
-                     font=ctk.CTkFont(size=18, weight="bold"),
-                     text_color=Config.TEXT_DARK, anchor="w").grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        # Überschrift
+        ctk.CTkLabel(
+            self.upcoming_frame,
+            text="Bevorstehende Termine",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=Config.TEXT_DARK,
+            anchor="w"
+        ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
 
-        self.upcoming_list_frame = ctk.CTkFrame(self.upcoming_frame, fg_color=Config.BG_WHITE, corner_radius=10)
-        self.upcoming_list_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+        # weiße Box mit Scroll (damit nichts „rausläuft“)
+        self.upcoming_list_frame = ctk.CTkScrollableFrame(
+            self.upcoming_frame,
+            fg_color=Config.BG_WHITE,
+            corner_radius=10
+        )
+        self.upcoming_list_frame.grid(
+            row=1,
+            column=0,
+            padx=20,
+            pady=(0, 20),
+            sticky="nsew"
+        )
         self.upcoming_list_frame.grid_columnconfigure(0, weight=1)
+
 
     def update_upcoming_events(self):
 
         if not hasattr(self, 'upcoming_list_frame') or not self.upcoming_list_frame.winfo_exists():
             return
 
+        # alte Einträge löschen
         for widget in self.upcoming_list_frame.winfo_children():
             widget.destroy()
 
         upcoming_events = self.data_manager.get_upcoming_events()
 
         if not upcoming_events:
-            ctk.CTkLabel(self.upcoming_list_frame, text="Keine bevorstehenden Events geplant.",
-                         text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=12)).grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+            ctk.CTkLabel(
+                self.upcoming_list_frame,
+                text="Keine bevorstehenden Events geplant.",
+                text_color=Config.TEXT_DARK,
+                font=ctk.CTkFont(size=12)
+            ).grid(row=0, column=0, padx=10, pady=10, sticky="ew")
             return
 
         for i, event in enumerate(upcoming_events):
-            event_frame = ctk.CTkFrame(self.upcoming_list_frame, fg_color="transparent")
-            event_frame.grid(row=i, column=0, padx=10, pady=5, sticky="ew")
-            event_frame.grid_columnconfigure(0, weight=1)
+            # kleiner Card-Frame pro Termin
+            event_frame = ctk.CTkFrame(
+                self.upcoming_list_frame,
+                fg_color="transparent"
+            )
+            event_frame.grid(row=i * 2, column=0, padx=10, pady=5, sticky="ew")
+            event_frame.grid_columnconfigure(1, weight=1)
 
-            date_obj = datetime.date.fromisoformat(event['date_key'])
-            formatted_date = date_obj.strftime("%d.%m")
+            # Datum formatieren
+            date_obj = datetime.date.fromisoformat(event["date_key"])
+            formatted_date = date_obj.strftime("%d.%m.%Y")
 
-            ctk.CTkLabel(event_frame, text=event['title'],
-                         font=ctk.CTkFont(size=14, weight="normal"),
-                         text_color=Config.TEXT_DARK, anchor="w").grid(row=0, column=0, sticky="w")
+            # Farbe des Streamers (Fallback falls None)
+            color_hex = event.get("streamerColor") or Config.SIDEBAR_BLUE
 
-            ctk.CTkLabel(event_frame, text=formatted_date,
-                         font=ctk.CTkFont(size=12, weight="bold"),
-                         text_color=Config.SIDEBAR_BLUE, anchor="e").grid(row=0, column=1, sticky="e")
+            # ● Farbpunkt – zeigt die Streamer-Farbe
+            ctk.CTkLabel(
+                event_frame,
+                text="●",
+                text_color=color_hex,
+                font=ctk.CTkFont(size=26, weight="bold")
+            ).grid(row=0, column=0, rowspan=2, padx=(5, 10), pady=0, sticky="n")
 
-            ctk.CTkLabel(event_frame, text=event['streamerName'],
-                         font=ctk.CTkFont(size=10),
-                         text_color=Config.TEXT_DARK, anchor="w").grid(row=1, column=0, columnspan=2, sticky="w")
+            # Titel
+            ctk.CTkLabel(
+                event_frame,
+                text=event["title"],
+                font=ctk.CTkFont(size=14, weight="bold"),
+                text_color=Config.TEXT_DARK,
+                anchor="w"
+            ).grid(row=0, column=1, sticky="w")
 
-            ctk.CTkFrame(self.upcoming_list_frame, height=1, fg_color=Config.PANEL_ACCENT).grid(row=i+1, column=0, sticky="ew", padx=5)
+            # Streamer-Name
+            ctk.CTkLabel(
+                event_frame,
+                text=event["streamerName"],
+                font=ctk.CTkFont(size=11),
+                text_color="gray25",
+                anchor="w"
+            ).grid(row=1, column=1, pady=(0, 2), sticky="w")
+
+            # Datum rechts als kleines Badge
+            ctk.CTkLabel(
+                event_frame,
+                text=formatted_date,
+                font=ctk.CTkFont(size=12, weight="bold"),
+                text_color=Config.SIDEBAR_BLUE,
+                anchor="e"
+            ).grid(row=0, column=2, rowspan=2, padx=(10, 5), sticky="e")
+
+            # Trennlinie unter jeder Zeile
+            ctk.CTkFrame(
+                self.upcoming_list_frame,
+                height=1,
+                fg_color=Config.PANEL_ACCENT
+            ).grid(row=i * 2 + 1, column=0, sticky="ew", padx=5)
 
     # --- DIALOG (Modal) for Event Creation ---
     def _show_event_dialog(self, date_key=None, existing_event=None):
@@ -1078,9 +1451,8 @@ class ManagerDashboard(ctk.CTk):
         popup.geometry("350x130")
         popup.configure(fg_color=Config.BG_WHITE)
 
-        # immer im Vordergrund
-        popup.transient(self)   # an dieses Fenster binden
-        popup.grab_set()        # Modales Fenster
+        popup.transient(self)
+        popup.grab_set()
         popup.lift()
         try:
             popup.attributes("-topmost", True)
@@ -1192,7 +1564,6 @@ class EventDialog(ctk.CTkToplevel):
         ctk.CTkLabel(self, text="Zugeordneter Streamer:", text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=14, weight="normal"), anchor="w").grid(row=current_row, column=0, padx=20, pady=(0, 5), sticky="ew")
         current_row += 1
 
-        # NEU: Streamer aus der DB holen, nicht aus .streamers Dict
         streamers = self.master.data_manager.get_all_streamers()
         streamer_names = [s.get('name', 'Unbekannt') for s in streamers]
 
@@ -1275,7 +1646,7 @@ class StreamerDialog(ctk.CTkToplevel):
         self.streamer = existing_streamer
 
         self.title(f"Streamer bearbeiten: {self.streamer['name']}")
-        self.geometry("400x300")
+        self.geometry("400x380")
         self.resizable(False, False)
         self.configure(fg_color=Config.BG_WHITE)
         self.columnconfigure(0, weight=1)
@@ -1297,29 +1668,49 @@ class StreamerDialog(ctk.CTkToplevel):
         self.status_var = ctk.StringVar(value=self.streamer.get('status', 'Aktiv'))
         self.status_optionmenu = ctk.CTkOptionMenu(self, values=["Aktiv", "Pause"],
                                                    variable=self.status_var, corner_radius=8)
-        self.status_optionmenu.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.status_optionmenu.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+
+        # Farbe
+        ctk.CTkLabel(self, text="Farbe:", text_color=Config.TEXT_DARK, anchor="w").grid(row=5, column=0, padx=20, pady=(5, 0), sticky="ew")
+
+        current_color_hex = self.streamer.get('color_hex', '#34C759')
+        default_color_name = "Grün"
+        for name, hex_value in STREAMER_COLOR_CHOICES.items():
+            if hex_value == current_color_hex:
+                default_color_name = name
+                break
+
+        self.color_var = ctk.StringVar(value=default_color_name)
+        self.color_optionmenu = ctk.CTkOptionMenu(
+            self,
+            values=list(STREAMER_COLOR_CHOICES.keys()),
+            variable=self.color_var,
+            corner_radius=8
+        )
+        self.color_optionmenu.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="ew")
 
         # Save Button
         ctk.CTkButton(self, text="Speichern", command=self._save_streamer,
                       fg_color=Config.SIDEBAR_BLUE, hover_color=Config.SIDEBAR_HOVER, corner_radius=10,
-                      font=ctk.CTkFont(size=16, weight="bold")).grid(row=5, column=0, padx=20, pady=(10, 20), sticky="ew")
+                      font=ctk.CTkFont(size=16, weight="bold")).grid(row=7, column=0, padx=20, pady=(10, 20), sticky="ew")
 
     def _save_streamer(self):
         new_name = self.name_entry.get().strip()
         new_status = self.status_var.get()
+        color_name = self.color_var.get()
+        new_color = STREAMER_COLOR_CHOICES.get(color_name, "#34C759")
 
         if not new_name:
             self.master.show_message_box('Name darf nicht leer sein.', 'warning')
             return
 
         success = self.master.data_manager.update_streamer(
-            self.streamer['id'], new_name, new_status
+            self.streamer['id'], new_name, new_status, new_color
         )
 
         if success:
             self.master.show_message_box(f"Streamer '{new_name}' aktualisiert.", 'success')
 
-            # Update lists
             self.master.update_streamer_list(self.master.streamer_list_frame)
             self.master.update_calendar()
             self.master.update_upcoming_events()
