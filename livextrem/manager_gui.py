@@ -87,11 +87,13 @@ class DataManager:
             streamer_id AS id,
             name,
             COALESCE(status, 'Aktiv') AS status,
-            COALESCE(farbe, '#34C759') AS color_hex   -- <- nimmt jetzt die DB-Spalte "farbe"
+            COALESCE(farbe, '#34C759') AS color_hex
         FROM streamer
+        WHERE status <> 'Archiviert'      -- Archivierte ausblenden
         ORDER BY name
         """)
         return self.cursor.fetchall()
+
 
 
 
@@ -119,13 +121,15 @@ class DataManager:
         return self.cursor.rowcount > 0
 
     def delete_streamer(self, streamer_id):
-        """Streamer aus der DB löschen."""
-        self.cursor.execute(
-            "DELETE FROM streamer WHERE streamer_id = %s",
-            (streamer_id,)
-        )
+        """Streamer NICHT löschen, sondern als 'Archiviert' markieren."""
+        self.cursor.execute("""
+            UPDATE streamer
+            SET status = 'Archiviert'
+            WHERE streamer_id = %s
+        """, (streamer_id,))
         self.conn.commit()
         return self.cursor.rowcount > 0
+
 
     # ------------ EVENT-FUNKTIONEN (stream_planung) ------------
 
@@ -633,7 +637,7 @@ class ManagerDashboard(ctk.CTk):
 
             ctk.CTkButton(
                 action_frame,
-                text="Löschen",
+                text="Archivieren",
                 command=lambda e=event: self._confirm_delete_event(e),
                 fg_color="red",
                 hover_color="#A00000",
@@ -869,7 +873,7 @@ class ManagerDashboard(ctk.CTk):
 
             ctk.CTkButton(
                 action_frame,
-                text="Löschen",
+                text="Archivieren",
                 command=lambda s=streamer: self._confirm_delete_streamer(s),
                 fg_color="red",
                 hover_color="#A00000",
@@ -889,12 +893,14 @@ class ManagerDashboard(ctk.CTk):
     def _confirm_delete_streamer(self, streamer):
             """Shows a confirmation dialog for deleting a streamer."""
             dialog = ctk.CTkToplevel(self)
-            dialog.title("Streamer löschen")
+            dialog.title("Streamer archivieren")
             dialog.geometry("400x150")
             dialog.configure(fg_color=Config.BG_WHITE)
             dialog.grab_set()
 
-            ctk.CTkLabel(dialog, text=f"Sicher, dass du '{streamer['name']}' löschen willst?",
+            ctk.CTkLabel(
+                        dialog,
+                        text=f"Sicher, dass du '{streamer['name']}' archivieren willst?",
                         text_color=Config.TEXT_DARK, font=ctk.CTkFont(size=14, weight="bold")).pack(padx=20, pady=15)
 
             button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
@@ -903,7 +909,7 @@ class ManagerDashboard(ctk.CTk):
             def delete_confirmed():
                 success = self.data_manager.delete_streamer(streamer['id'])
                 if success:
-                    self.show_message_box('Streamer erfolgreich gelöscht.', 'success')
+                    self.show_message_box('Streamer wurde archiviert.', 'success')
                     self.update_streamer_list(self.streamer_list_frame)
                     self.update_calendar()
                     self.update_upcoming_events()
@@ -911,7 +917,7 @@ class ManagerDashboard(ctk.CTk):
                     self.show_message_box('Fehler beim Löschen des Streamers.', 'error')
                 dialog.destroy()
 
-            ctk.CTkButton(button_frame, text="Löschen", command=delete_confirmed,
+            ctk.CTkButton(button_frame, text="Archivieren", command=delete_confirmed,
                         fg_color="red", hover_color="#A00000", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=10)
 
             ctk.CTkButton(button_frame, text="Abbrechen", command=dialog.destroy,
@@ -1666,8 +1672,13 @@ class StreamerDialog(ctk.CTkToplevel):
         # Status
         ctk.CTkLabel(self, text="Status:", text_color=Config.TEXT_DARK, anchor="w").grid(row=3, column=0, padx=20, pady=(5, 0), sticky="ew")
         self.status_var = ctk.StringVar(value=self.streamer.get('status', 'Aktiv'))
-        self.status_optionmenu = ctk.CTkOptionMenu(self, values=["Aktiv", "Pause"],
-                                                   variable=self.status_var, corner_radius=8)
+        self.status_optionmenu = ctk.CTkOptionMenu(
+            self,
+            values=["Aktiv", "Pause", "Archiviert"],
+            variable=self.status_var,
+            corner_radius=8
+                            )
+
         self.status_optionmenu.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
 
         # Farbe
