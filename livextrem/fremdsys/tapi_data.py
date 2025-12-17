@@ -1,6 +1,8 @@
 import requests
 
-def header(token):
+
+
+def header(token): # Fertig
     CLIENT_ID = token.clientid
     ACCESS_TOKEN = token.atoken
     USER_ID = token.userid
@@ -10,6 +12,7 @@ def header(token):
         "Authorization": f"Bearer {ACCESS_TOKEN}"
     }
     return headers
+
 
 def laststreams(token, limit_per_page=100):
     """
@@ -78,8 +81,6 @@ def laststreams(token, limit_per_page=100):
 
     return all_streams
 
-# [{'id': '2607193563', 'title': 'Stream Together mit Tim 🎮🤝 | REPO + Chained Together', 'created_at': '2025-11-01T19:21:55Z', 'duration': '3h56m22s', 'views': 28, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/c6ed1943ca34bece2dd5_derflaavius_315023494631_1762024907//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2607193563', 'game_name': None}, {'id': '2602889239', 'title': 'Genesungsstream 🤒 | Ihr Entscheidet! 🎮', 'created_at': '2025-10-27T19:15:07Z', 'duration': '2h42m33s', 'views': 35, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/bc058d5aa3c07c15b8fe_derflaavius_314970933607_1761592501//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2602889239', 'game_name': None}]
-
 
 def topbits(token):
     headers = header(token)
@@ -100,11 +101,14 @@ def followlist(token): # Fertig
     
     headers = header(token)
     flwrlist = requests.get(f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={token.userid}&first=100", headers=headers).json()
+    print(flwrlist)
     flwrlist = extract_usernames(flwrlist)
     return flwrlist
+    # Unkonvertiertes Dict {'total': 51, 'data': [{'user_id': '1401839278', 'user_login': 'flogstegi', 'user_name': 'flogstegi', 'followed_at': '2025-12-05T08:46:07Z'}
 
 
 def sublist(token): # Fertig
+
     """
     Ruft alle aktuellen Abonnenten (Subs) auf und gibt sie als Liste zurück.
     """
@@ -118,3 +122,6 @@ def sublist(token): # Fertig
     subslist = requests.get(f"https://api.twitch.tv/helix/subscriptions?broadcaster_id={token.userid}", headers=headers).json()
     subslist = extract_usernames(subslist)
     return subslist
+
+
+# VOD: [{'id': '2607193563', 'title': 'Stream Together mit Tim 🎮🤝 | REPO + Chained Together', 'created_at': '2025-11-01T19:21:55Z', 'duration': '3h56m22s', 'views': 28, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/c6ed1943ca34bece2dd5_derflaavius_315023494631_1762024907//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2607193563', 'game_name': None}, {'id': '2602889239', 'title': 'Genesungsstream 🤒 | Ihr Entscheidet! 🎮', 'created_at': '2025-10-27T19:15:07Z', 'duration': '2h42m33s', 'views': 35, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/bc058d5aa3c07c15b8fe_derflaavius_314970933607_1761592501//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2602889239', 'game_name': None}]
