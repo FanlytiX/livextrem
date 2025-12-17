@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Doku marc - My Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">My Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Projektsteckbrief</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Doku marc</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="2"><a href="#1-projektuberblick" class="nav-link">1. Projektüberblick</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#2-technischer-stack" class="nav-link">2. Technischer Stack</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#3-dateistruktur-relevant-in-der-unterhaltung" class="nav-link">3. Dateistruktur (relevant in der Unterhaltung)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#4-twitch-oauth-aktueller-stand" class="nav-link">4. Twitch OAuth – aktueller Stand</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#5-launcher-gui-aaa_prov_mainpy" class="nav-link">5. Launcher-GUI (aaa_prov_main.py)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#6-live-chat-moderation-monitoring" class="nav-link">6. Live-Chat (Moderation / Monitoring)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#7-vod-chat-vod-handling" class="nav-link">7. VOD-Chat &amp; VOD-Handling</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#8-moderationsfunktionen-ban-timeout-unban" class="nav-link">8. Moderationsfunktionen (Ban / Timeout / Unban)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#9-bekannte-baustellen-offene-punkte" class="nav-link">9. Bekannte Baustellen / offene Punkte</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="2"><a href="#10-zusammenfassung-in-einem-satz" class="nav-link">10. Zusammenfassung in einem Satz</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<p>Okay, du willst die Komplett-Doku aus meinem Kopf. Guter Move.
+Ich schreib dir jetzt <em>alles</em>, was ich über euer Projekt liveXtrem weiß – so detailliert wie möglich. Das kannst du 1:1 als Grundlage für Doku / Pflichtenheft / Architektur nutzen.</p>
+<hr />
+<h2 id="1-projektuberblick">1. Projektüberblick</h2>
+<ul>
+<li><strong>Projektname:</strong> <code>liveXtrem</code></li>
+<li><strong>Art:</strong> Projektarbeit auf <strong>Bachelor-Niveau</strong></li>
+<li><strong>Studiengang:</strong> Wirtschaftsinformatik</li>
+<li><strong>Teamgröße:</strong> 3 Personen</li>
+<li><strong>Ziel:</strong> Ein <strong>Stream Manager</strong> für Twitch, der sich konzeptionell an ein <strong>ERP-System</strong> anlehnt.</li>
+<li>
+<p><strong>Basissäulen / Module:</strong></p>
+</li>
+<li>
+<p><strong>Finanzen</strong> – z. B. Auswertung von Einnahmen (Subs, Bits, Donations etc.)</p>
+</li>
+<li><strong>Planung</strong> – z. B. Streamplanung, Schedule, Contentplanung.</li>
+<li><strong>Moderation</strong> – Tools zur Live-Moderation, Auswertung von Chat / Usern.</li>
+</ul>
+<p>Die Anwendung soll Streamern (konkret dir mit dem Kanal <strong>„derFlaavius“</strong>, Twitch-ID <code>800711400</code>) helfen, ihren Kanal professioneller zu steuern.</p>
+<hr />
+<h2 id="2-technischer-stack">2. Technischer Stack</h2>
+<ul>
+<li><strong>Sprache:</strong> Python 3.12</li>
+<li>
+<p><strong>GUI:</strong></p>
+</li>
+<li>
+<p>Ursprünglich: <code>tkinter</code></p>
+</li>
+<li>Ziel: <strong>CustomTkinter (<code>customtkinter</code>)</strong> mit Theme-Datei <code>style.json</code>.</li>
+<li><strong>HTTP / API:</strong> <code>requests</code></li>
+<li><strong>Socket / IRC:</strong> <code>socket</code> + <code>time</code> für Twitch-Chat über IRC.</li>
+<li><strong>Threading:</strong> <code>threading</code> für lokalen OAuth-Server.</li>
+<li><strong>Lokaler Webserver:</strong> <code>http.server.HTTPServer</code> für OAuth Redirect.</li>
+</ul>
+<hr />
+<h2 id="3-dateistruktur-relevant-in-der-unterhaltung">3. Dateistruktur (relevant in der Unterhaltung)</h2>
+<p>Ungefähr so:</p>
+<pre><code class="language-text">livextrem/
+    aaa_prov_main.py              # Start-/Launcher-Fenster
+    moderator_dashboard.py        # Mod-GUI (separates Fenster)
+    style.json                    # (geplant) Theme-Einstellungen für CustomTkinter
+
+    fremdsys/
+        __init__.py
+        oauth.py                  # Twitch-OAuth-Logik
+        tw_privdata.py            # Client-ID / Client-Secret (Daten-Klasse Daten)
+        tapi_data.py              # (vermutlich) Twitch-Datenfunktionen (Follower, etc.)
+        tapi_mod.py               # Moderatorfunktionen (Chat, VOD, Modtools)
+</code></pre>
+<hr />
+<h2 id="4-twitch-oauth-aktueller-stand">4. Twitch OAuth – aktueller Stand</h2>
+<h3 id="41-privatedaten">4.1. Privatedaten</h3>
+<p>In <code>fremdsys/tw_privdata.py</code> gibt es eine Klasse <code>Daten</code>, die mindestens enthält:</p>
+<ul>
+<li><code>client_id</code></li>
+<li><code>client_secret</code></li>
+</ul>
+<p>Diese wird in <code>oauth.py</code> so verwendet:</p>
+<pre><code class="language-python">from . import tw_privdata
+twd = tw_privdata.Daten()
+CLIENT_ID = twd.client_id
+CLIENT_SECRET = twd.client_secret
+REDIRECT_URI = &quot;http://localhost:8080&quot;
+</code></pre>
+<h3 id="42-scopes">4.2. Scopes</h3>
+<p>Ihr verwendet einen recht umfangreichen Satz an OAuth-Scopes:</p>
+<pre><code class="language-python">SCOPES = [
+    &quot;user:read:email&quot;,
+    &quot;channel:manage:broadcast&quot;,
+    &quot;bits:read&quot;,
+    &quot;moderator:read:followers&quot;,
+    &quot;channel:read:subscriptions&quot;,
+    &quot;chat:read&quot;,
+    &quot;chat:edit&quot;,
+    &quot;moderation:read&quot;,
+    &quot;moderator:read:banned_users&quot;,
+    &quot;moderator:read:blocked_terms&quot;,
+    &quot;moderator:read:automod_settings&quot;,
+    &quot;moderator:manage:banned_users&quot;,
+    &quot;moderator:manage:blocked_terms&quot;
+]
+</code></pre>
+<p>Daraus wird in der URL ein Scope-String wie:</p>
+<pre><code class="language-text">user:read:email+channel:manage:broadcast+...+moderator:manage:blocked_terms
+</code></pre>
+<p>gebaut.</p>
+<h3 id="43-token-objekt-adaten">4.3. Token-Objekt (Adaten)</h3>
+<p>In <code>oauth.gen()</code> definierst du eine innere Klasse <code>Adaten</code>:</p>
+<pre><code class="language-python">class Adaten:
+    def __init__(self):
+        self.atoken = None         # Access Token
+        self.rtoken = None         # Refresh Token
+        self.expire = None         # Gültigkeitsdauer (Sekunden)
+        self.clientid = CLIENT_ID
+        self.clientsecret = CLIENT_SECRET
+        self.userid = None         # Twitch-User-ID
+        self.loginname = None      # z. B. &quot;derflaavius&quot;
+        self.displayname = None    # z. B. &quot;derFlaavius&quot;
+</code></pre>
+<p>Dieses Objekt wird am Ende von <code>gen()</code> mit den Twitch-Daten befüllt und zurückgegeben.</p>
+<h3 id="44-oauth-flow-lokaler-server">4.4. OAuth-Flow (lokaler Server)</h3>
+<p><strong>Ablauf in <code>oauth.gen()</code> (aktuelle Version):</strong></p>
+<ol>
+<li>
+<p><code>auth_event</code> ist ein globales <code>threading.Event</code>, mit dem gewartet wird, bis Twitch den Redirect schickt.</p>
+</li>
+<li>
+<p><code>OAuthHandler</code> erbt von <code>BaseHTTPRequestHandler</code> und:</p>
+</li>
+<li>
+<p>fängt <code>/favicon.ico</code> ab</p>
+</li>
+<li>liest bei <code>/callback?code=...</code> den <code>code</code>-Parameter</li>
+<li>tauscht den Code gegen einen Access Token via <code>https://id.twitch.tv/oauth2/token</code></li>
+<li>speichert das JSON in <code>token_info</code></li>
+<li>schickt eine HTML-Antwort „Login erfolgreich! …“</li>
+<li>setzt <code>auth_event.set()</code></li>
+<li>
+<p>ruft <code>self.server.shutdown()</code> in einem Thread → HTTP-Server beendet sich</p>
+</li>
+<li>
+<p><code>start_server()</code>:</p>
+</li>
+</ol>
+<pre><code class="language-python">def start_server():
+    server = http.server.HTTPServer((&quot;localhost&quot;, 8080), OAuthHandler)
+    server.serve_forever()
+</code></pre>
+<ol>
+<li><code>start_server()</code> wird in einem <strong>Daemon-Thread</strong> gestartet:</li>
+</ol>
+<pre><code class="language-python">threading.Thread(target=start_server, daemon=True).start()
+</code></pre>
+<ol>
+<li>Es wird die OAuth-URL gebaut und im Browser geöffnet:</li>
+</ol>
+<pre><code class="language-python">scope_string = &quot;+&quot;.join(SCOPES)
+
+auth_url = (
+    &quot;https://id.twitch.tv/oauth2/authorize&quot;
+    f&quot;?client_id={CLIENT_ID}&quot;
+    f&quot;&amp;redirect_uri={REDIRECT_URI}&quot;
+    f&quot;&amp;response_type=code&quot;
+    f&quot;&amp;scope={scope_string}&quot;
+)
+webbrowser.open(auth_url)
+</code></pre>
+<ol>
+<li>
+<p><code>auth_event.wait()</code> blockiert, bis Twitch den Code zurückschickt und <code>OAuthHandler</code> <code>auth_event.set()</code> aufruft.</p>
+</li>
+<li>
+<p>Danach wird <code>token</code> befüllt:</p>
+</li>
+</ol>
+<pre><code class="language-python">token.atoken  = token_info.get(&quot;access_token&quot;)
+token.rtoken  = token_info.get(&quot;refresh_token&quot;)
+token.expire  = token_info.get(&quot;expires_in&quot;)
+</code></pre>
+<ol>
+<li>Es werden Userdaten über Helix geladen:</li>
+</ol>
+<pre><code class="language-python">user = requests.get(
+    &quot;https://api.twitch.tv/helix/users&quot;,
+    headers={&quot;Client-ID&quot;: CLIENT_ID, &quot;Authorization&quot;: f&quot;Bearer {token.atoken}&quot;}
+).json()
+data = user[&quot;data&quot;][0]
+token.userid      = data[&quot;id&quot;]
+token.loginname   = data[&quot;login&quot;]
+token.displayname = data[&quot;display_name&quot;]
+</code></pre>
+<ol>
+<li><code>gen()</code> gibt das <code>token</code>-Objekt zurück.</li>
+</ol>
+<h3 id="45-refresh-funktion">4.5. Refresh-Funktion</h3>
+<p>In <code>refresh(token)</code>:</p>
+<pre><code class="language-python">r = requests.post(
+    &quot;https://id.twitch.tv/oauth2/token&quot;,
+    data={
+        &quot;grant_type&quot;: &quot;refresh_token&quot;,
+        &quot;refresh_token&quot;: token.rtoken,
+        &quot;client_id&quot;: token.clientid,
+        &quot;client_secret&quot;: token.clientsecret
+    }
+)
+new_token_info = r.json()
+token.atoken   = new_token_info.get(&quot;access_token&quot;)
+token.rtoken   = new_token_info.get(&quot;refresh_token&quot;)
+token.expire   = new_token_info.get(&quot;expires_in&quot;)
+</code></pre>
+<p>→ Der vorhandene <code>token</code> wird aktualisiert.</p>
+<hr />
+<h2 id="5-launcher-gui-aaa_prov_mainpy">5. Launcher-GUI (aaa_prov_main.py)</h2>
+<p>Aktuell (in der letzten Version, die du gezeigt hast):</p>
+<pre><code class="language-python">from fremdsys import oauth, tapi_data, tapi_mod
+import tkinter as tk
+import moderator_dashboard
+import os
+import subprocess
+import sys
+
+root = tk.Tk()
+root.geometry(&quot;200x150&quot;)
+root.title(&quot;Starthilfe&quot;)
+
+token = None  # global (implizit gesetzt über f_bn1)
+
+def f_bn1():
+    print(&quot;Anmeldung geklickt&quot;)
+    global token
+    token = oauth.gen()
+    if token != []:  # logisch immer True, weil token ein Objekt ist
+        tk.Label(root, text=&quot;Angemeldet&quot;, fg=&quot;green&quot;).pack()
+
+def f_bn2():
+    print(&quot;Mod Dashboard geklickt&quot;)
+    def starte_dashboard():
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.join(current_dir, &quot;moderator_dashboard.py&quot;)
+        subprocess.Popen([sys.executable, script_path])
+    starte_dashboard()
+
+def f_bn3():
+    print(&quot;Manager Dashboard geklickt&quot;)
+
+tk.Label(root, text=&quot;&quot;).pack()
+tk.Button(root, text=&quot;Twitch Anmelden&quot;, command=f_bn1).pack()
+tk.Button(root, text=&quot;Mod Dashboard&quot;, command=f_bn2).pack()
+tk.Button(root, text=&quot;Manager Dashboard&quot;, command=f_bn3).pack()
+
+root.mainloop()
+</code></pre>
+<p>Später hast du auch eine <strong>CustomTkinter-Version</strong> angefangen, die <code>style.json</code> lädt (mit Keys <code>appearance_mode</code> und <code>color_theme</code>), aber dort gab es einen <code>KeyError: 'appearance_mode'</code>, weil die JSON-Datei diesen Key (noch) nicht enthielt.</p>
+<hr />
+<h2 id="6-live-chat-moderation-monitoring">6. Live-Chat (Moderation / Monitoring)</h2>
+<h3 id="61-irc-chat-lesen">6.1. IRC-Chat lesen</h3>
+<p>Du hast mehrere Varianten gehabt, u. a.:</p>
+<pre><code class="language-python">import socket
+import time
+
+def get_live_messages(token):
+    oauth_token = f&quot;oauth:{token.atoken}&quot;
+    nickname = token.loginname
+    channel = token.displayname
+    duration = 10.0
+
+    server = &quot;irc.chat.twitch.tv&quot;
+    port = 6667
+
+    sock = socket.socket()
+    sock.connect((server, port))
+    sock.settimeout(1.0)
+
+    sock.send(f&quot;PASS {oauth_token}\r\n&quot;.encode(&quot;utf-8&quot;))
+    sock.send(f&quot;NICK {nickname}\r\n&quot;.encode(&quot;utf-8&quot;))
+    sock.send(f&quot;JOIN #{channel}\r\n&quot;.encode(&quot;utf-8&quot;))
+
+    messages = []
+    start_time = time.time()
+
+    while time.time() - start_time &lt; duration:
+        try:
+            resp = sock.recv(2048).decode(&quot;utf-8&quot;)
+
+            if resp.startswith(&quot;PING&quot;):
+                sock.send(&quot;PONG :tmi.twitch.tv\r\n&quot;.encode(&quot;utf-8&quot;))
+                continue
+
+            if &quot;PRIVMSG&quot; in resp:
+                prefix, msg = resp.split(&quot; PRIVMSG &quot;, 1)
+                user = prefix.split(&quot;!&quot;, 1)[0][1:]
+                _, text = msg.split(&quot; :&quot;, 1)
+
+                messages.append({
+                    &quot;user&quot;: user,
+                    &quot;message&quot;: text.strip()
+                })
+        except socket.timeout:
+            continue
+        except Exception:
+            continue
+
+    sock.close()
+    return messages
+</code></pre>
+<p>Wichtige Punkte:</p>
+<ul>
+<li><code>PASS oauth:...</code> → Passwort ist dein Access Token mit Prefix <code>oauth:</code>.</li>
+<li><code>NICK</code> → dein Login.</li>
+<li><code>JOIN #channel</code> → Kanal joinen (<code>displayname</code> vs <code>loginname</code>: du hast beides getestet).</li>
+<li><code>settimeout(1.0)</code> verhindert, dass <code>recv()</code> ewig blockiert – ermöglicht sauberen Abbruch.</li>
+<li>PING/PONG-Handling eingebaut.</li>
+</ul>
+<p>Es gibt auch <code>test_irc_connection(token)</code>, das rohe IRC-Nachrichten für einige Sekunden ausgibt, um die Verbindung zu debuggen.</p>
+<hr />
+<h2 id="7-vod-chat-vod-handling">7. VOD-Chat &amp; VOD-Handling</h2>
+<h3 id="71-get_vod_chattoken">7.1. get_vod_chat(token)</h3>
+<p>Du hast eine Funktion erstellt, die:</p>
+<ol>
+<li>Über Helix das <strong>letzte VOD</strong> deines Kanals holt:</li>
+</ol>
+<pre><code class="language-python">vod_url = f&quot;https://api.twitch.tv/helix/videos?user_id={user_id}&amp;type=archive&amp;first=1&quot;
+</code></pre>
+<ol>
+<li>Dann holt sie einen <strong>App Access Token</strong> via <code>client_credentials</code>.</li>
+<li>Mit diesem Token ruft sie die (deprecated) V5-API auf:</li>
+</ol>
+<pre><code class="language-python">comments_url = f&quot;https://api.twitch.tv/v5/videos/{video_id}/comments&quot;
+</code></pre>
+<ol>
+<li>Sie läuft über alle Pages via <code>cursor</code> und sammelt:</li>
+</ol>
+<pre><code class="language-python">{
+    &quot;user&quot;: display_name des Commenters,
+    &quot;message&quot;: body,
+    &quot;timestamp&quot;: created_at
+}
+</code></pre>
+<h3 id="72-problem-404-leere-responses">7.2. Problem: 404 / Leere Responses</h3>
+<p>Für deinen Kanal ergab sich konstant:</p>
+<ul>
+<li>V5-API gibt <strong>404</strong> oder leeres Response zurück.</li>
+<li>
+<p>Das bedeutet:</p>
+</li>
+<li>
+<p>Entweder hat das VOD <strong>kein Chat Replay</strong>, oder</p>
+</li>
+<li>Twitch liefert für deinen Kanal keinen VOD-Chat mehr aus (häufig bei kleinen Kanälen / neueren VODs / interner Policy).</li>
+</ul>
+<h3 id="73-list_vods_with_chat_statustoken">7.3. list_vods_with_chat_status(token)</h3>
+<p>Du hast eine Funktion gebaut, die:</p>
+<ul>
+<li>Alle VODs holt (Helix):</li>
+</ul>
+<pre><code class="language-python">vod_url = f&quot;https://api.twitch.tv/helix/videos?user_id={user_id}&amp;type=archive&amp;first=100&quot;
+</code></pre>
+<ul>
+<li>
+<p>Für jedes VOD die V5-Comments-URL testet:</p>
+</li>
+<li>
+<p><code>200 + Inhalt</code> → <code>chat_status = "processed"</code>, <code>chat_available = True</code></p>
+</li>
+<li><code>200 + leer</code> → <code>pending_or_none</code></li>
+<li><code>401/403</code> → <code>restricted</code></li>
+<li>
+<p>Sonst → <code>error_&lt;status&gt;</code></p>
+</li>
+<li>
+<p>Am Ende:</p>
+</li>
+<li>
+<p>Wenn <strong>mindestens ein VOD</strong> <code>chat_available == True</code> → Rückgabecode <code>0</code></p>
+</li>
+<li>Wenn <strong>kein einziges</strong> VOD Chat hat → Rückgabecode <code>404</code></li>
+</ul>
+<p>Für dich: alle VODs haben <code>error_404</code> → Chat ist de facto nicht abrufbar.</p>
+<h3 id="74-wichtige-erkenntnis">7.4. Wichtige Erkenntnis</h3>
+<ul>
+<li>Für <strong>euer Projekt</strong> ist VOD-Chat über die API <strong>praktisch tot</strong>.</li>
+<li>Sinnvoller Ansatz: <strong>Chat während des Streams selbst loggen</strong> (via IRC) und lokal speichern (z. B. SQLite / JSON), wenn ihr Chat-Replay-Funktionen bauen wollt.</li>
+</ul>
+<hr />
+<h2 id="8-moderationsfunktionen-ban-timeout-unban">8. Moderationsfunktionen (Ban / Timeout / Unban)</h2>
+<p>Du wolltest Moderation aus dem Tool heraus ermöglichen.</p>
+<h3 id="81-ban-timeout">8.1. Ban / Timeout</h3>
+<p>Die Funktion:</p>
+<pre><code class="language-python">def ban_or_timeout_user(token, username, duration=0, reason=&quot;&quot;):
+    client_id = token.clientid
+    access_token = token.atoken
+    broadcaster_id = token.userid
+
+    headers = {
+        &quot;Client-ID&quot;: client_id,
+        &quot;Authorization&quot;: f&quot;Bearer {access_token}&quot;
+    }
+
+    # 1) User-ID auflösen
+    user_lookup = requests.get(
+        f&quot;https://api.twitch.tv/helix/users?login={username}&quot;,
+        headers=headers
+    ).json()
+
+    if &quot;data&quot; not in user_lookup or not user_lookup[&quot;data&quot;]:
+        print(&quot;❌ User nicht gefunden:&quot;, username)
+        return 404
+
+    target_user_id = user_lookup[&quot;data&quot;][0][&quot;id&quot;]
+
+    # 2) Ban / Timeout
+    ban_url = (
+        f&quot;https://api.twitch.tv/helix/moderation/bans&quot;
+        f&quot;?broadcaster_id={broadcaster_id}&quot;
+        f&quot;&amp;moderator_id={broadcaster_id}&quot;
+    )
+
+    payload = {
+        &quot;data&quot;: {
+            &quot;user_id&quot;: target_user_id,
+            &quot;duration&quot;: duration if duration &gt; 0 else None,
+            &quot;reason&quot;: reason
+        }
+    }
+    if duration == 0:
+        del payload[&quot;data&quot;][&quot;duration&quot;]
+
+    headers_json = {
+        &quot;Client-ID&quot;: client_id,
+        &quot;Authorization&quot;: f&quot;Bearer {access_token}&quot;,
+        &quot;Content-Type&quot;: &quot;application/json&quot;
+    }
+
+    resp = requests.post(ban_url, json=payload, headers=headers_json)
+
+    if resp.status_code in (200, 201, 204):
+        return 0
+
+    return resp.status_code
+</code></pre>
+<ul>
+<li><code>duration &gt; 0</code> → Timeout (Sekunden).</li>
+<li><code>duration == 0</code> → permanenter Ban.</li>
+<li>Rückgabewert: <code>0</code> bei Erfolg, sonst HTTP-Statuscode.</li>
+</ul>
+<h3 id="82-unban">8.2. Unban</h3>
+<p>Die dazugehörige <strong>Unban-Funktion</strong>:</p>
+<pre><code class="language-python">def unban_user(token, username):
+    client_id = token.clientid
+    access_token = token.atoken
+    broadcaster_id = token.userid
+
+    headers = {
+        &quot;Client-ID&quot;: client_id,
+        &quot;Authorization&quot;: f&quot;Bearer {access_token}&quot;
+    }
+
+    user_lookup = requests.get(
+        f&quot;https://api.twitch.tv/helix/users?login={username}&quot;,
+        headers=headers
+    ).json()
+
+    if &quot;data&quot; not in user_lookup or not user_lookup[&quot;data&quot;]:
+        print(&quot;❌ User nicht gefunden:&quot;, username)
+        return 404
+
+    target_user_id = user_lookup[&quot;data&quot;][0][&quot;id&quot;]
+
+    unban_url = (
+        f&quot;https://api.twitch.tv/helix/moderation/bans&quot;
+        f&quot;?broadcaster_id={broadcaster_id}&quot;
+        f&quot;&amp;moderator_id={broadcaster_id}&quot;
+        f&quot;&amp;user_id={target_user_id}&quot;
+    )
+
+    resp = requests.delete(unban_url, headers=headers)
+
+    if resp.status_code in (200, 204):
+        return 0
+
+    return resp.status_code
+</code></pre>
+<p>→ ebenfalls <code>0</code> bei Erfolg, sonst HTTP-Code.</p>
+<h3 id="83-mod-historie">8.3. Mod-Historie</h3>
+<p>Wir haben versucht, mit:</p>
+<pre><code class="language-python">GET https://api.twitch.tv/helix/moderation/banned/events
+</code></pre>
+<p>eine Moderationshistorie zu bekommen und herausgefunden:</p>
+<ul>
+<li>404 / Not Found für deinen Kanal.</li>
+<li>
+<p>Gründe:</p>
+</li>
+<li>
+<p>Twitch gibt <strong>nicht die eigene Broadcaster-Selbstmod-Historie</strong> aus.</p>
+</li>
+<li>Logs gibt es nur, wenn ein <em>anderer Moderator</em> Aktionen ausführt (mit bestimmten Scopes).</li>
+<li>
+<p>Praktische Konsequenz:</p>
+</li>
+<li>
+<p>Für euer Tool ist es sinnvoller, eine <strong>eigene Moderations-Logik</strong> aufzusetzen (z. B. über IRC-Commands oder direkt bei euren Ban/Timeout-Requests loggen).</p>
+</li>
+</ul>
+<hr />
+<h2 id="9-bekannte-baustellen-offene-punkte">9. Bekannte Baustellen / offene Punkte</h2>
+<ul>
+<li><strong>Token-Wiederverwendung:</strong>
+  Es gibt (mehrfach) Versuche, ein globales <code>token</code>-Objekt wiederzuverwenden und zu verhindern, dass <code>gen()</code> mehrfach läuft – ist aber nicht konsistent eingebaut (teilweise <code>global token</code>, teilweise gar nicht).</li>
+<li><strong>Abbruch des OAuth-Logins:</strong>
+  Wenn der User das Browserfenster schließt, ohne zu authorisieren, hängt <code>auth_event.wait()</code> → klassischer Deadlock.
+  (Wir hatten eine Variante mit <code>wait(timeout=60)</code>, aber du bist wieder auf die einfache Variante zurück.)</li>
+<li>
+<p><strong>CustomTkinter-Integration:</strong></p>
+</li>
+<li>
+<p>Style-Datei <code>style.json</code> war geplant, hatte aber nicht die Keys <code>appearance_mode</code> und <code>color_theme</code>.</p>
+</li>
+<li>Der aktuelle Starter nutzt in der letzten Version wieder reines <code>tkinter</code>.</li>
+<li>
+<p><strong>VOD-Chat:</strong></p>
+</li>
+<li>
+<p>Für deinen Kanal praktisch nicht nutzbar → Konzept sollte auf Live-Logging ausweichen.</p>
+</li>
+</ul>
+<hr />
+<h2 id="10-zusammenfassung-in-einem-satz">10. Zusammenfassung in einem Satz</h2>
+<p><strong>liveXtrem</strong> ist ein in Python/CustomTkinter entwickelter Stream-Manager für Twitch, der sich wie ein ERP-System verhält (Module Finanzen, Planung, Moderation), sich per lokalem OAuth-Flow authentifiziert, ein zentrales <code>token</code>-Objekt mit allen relevanten Twitch-Daten verwaltet, Live-Chat über IRC liest, VOD-Chat (theoretisch) via V5-API auslesen kann (praktisch bei deinem Kanal nicht), und Moderation direkt über die Twitch-Helix-API (Ban/Timeout/Unban + perspektivisch mehr) steuert.</p>
+<hr />
+<p>Wenn du magst, kann ich dir als nächsten Schritt:</p>
+<ul>
+<li>eine <strong>Architekturübersicht</strong> als Diagramm (textuell) erstellen,</li>
+<li>oder eine <strong>Pflichtenheft-Section</strong> formulieren (Zweck, Anforderungen, Schnittstellen),</li>
+<li>oder eine <strong>Doku-Seite</strong> für genau dieses OAuth-/Modul-Verhalten schreiben.</li>
+</ul>
+<p>Sag einfach, in welche Richtung du die Doku als Nächstes brauchst.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
