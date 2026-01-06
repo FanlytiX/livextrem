@@ -1,5 +1,5 @@
 import requests
-
+from datetime import datetime, timedelta
 
 
 def header(token): # Fertig
@@ -93,17 +93,11 @@ def followlist(token): # Fertig
     """
     Ruft alle aktuellen Follower auf und gib sie als Liste zurück
     """
-    def extract_usernames(flwrlist): # Filtert die Nutzernamen heraus, mehr wird nicht benötigt
-        usernames = []
-        for entry in flwrlist["data"]:
-            usernames.append(entry["user_name"])
-        return usernames
-    
     headers = header(token)
-    flwrlist = requests.get(f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={token.userid}&first=100", headers=headers).json()
-    print(flwrlist)
-    flwrlist = extract_usernames(flwrlist)
-    return flwrlist
+    response = requests.get(f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={token.userid}&first=100",headers=headers).json()
+    lastfive = _lastfive(response)
+    usernames = _extract_usernames(response)
+    return usernames, lastfive
     # Unkonvertiertes Dict {'total': 51, 'data': [{'user_id': '1401839278', 'user_login': 'flogstegi', 'user_name': 'flogstegi', 'followed_at': '2025-12-05T08:46:07Z'}
 
 
@@ -112,16 +106,35 @@ def sublist(token): # Fertig
     """
     Ruft alle aktuellen Abonnenten (Subs) auf und gibt sie als Liste zurück.
     """
-    def extract_usernames(subslist): # Filtert die Nutzernamen heraus, mehr wird nicht benötigt
-        usernames = []
-        for entry in subslist["data"]:
-            usernames.append(entry["user_name"])
-        return usernames
-
     headers = header(token)
     subslist = requests.get(f"https://api.twitch.tv/helix/subscriptions?broadcaster_id={token.userid}", headers=headers).json()
-    subslist = extract_usernames(subslist)
-    return subslist
+    lastfive = _lastfive(subslist)
+    subslist = _extract_usernames(subslist)
+    return subslist, lastfive
 
+
+def _lastfive(response, days=5): # Fertig
+    """
+    Filtert neue Einträge raus. Standard: days=5
+    """
+    result = []
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    print("\nCutoff:", cutoff)
+
+    for entry in response.get("data", []):
+        followed_at = datetime.strptime(
+            entry["followed_at"],
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        if followed_at >= cutoff:
+            result.append(entry["user_name"])
+    return result
+
+
+def _extract_usernames(list): # Fertig
+    usernames = []
+    for entry in list["data"]:
+        usernames.append(entry["user_name"])
+    return usernames
 
 # VOD: [{'id': '2607193563', 'title': 'Stream Together mit Tim 🎮🤝 | REPO + Chained Together', 'created_at': '2025-11-01T19:21:55Z', 'duration': '3h56m22s', 'views': 28, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/c6ed1943ca34bece2dd5_derflaavius_315023494631_1762024907//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2607193563', 'game_name': None}, {'id': '2602889239', 'title': 'Genesungsstream 🤒 | Ihr Entscheidet! 🎮', 'created_at': '2025-10-27T19:15:07Z', 'duration': '2h42m33s', 'views': 35, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/bc058d5aa3c07c15b8fe_derflaavius_314970933607_1761592501//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2602889239', 'game_name': None}]

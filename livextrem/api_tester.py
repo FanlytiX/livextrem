@@ -11,16 +11,23 @@ def on_close():
     root.destroy()
     exit()
 
-def ausgabe(liste):
-    _liste = ""
-    j = 0
-    for i in liste:
-        if j <= 3:
-            _liste += f"{i}, "
-            j += 1
-        else:
-            _liste += f"{i} \n"
-            j=0
+def ausgabe(gesamtliste, neueliste):
+    def auflisten(liste):
+        _liste = ""
+        j = 0
+        for i in liste:
+            if j <= 3:
+                _liste += f"{i}, "
+                j += 1
+            else:
+                _liste += f"{i} \n"
+                j=0
+        return _liste
+    
+    liste1 = auflisten(gesamtliste)
+    liste1 = liste1 + "\n\nNeu:"
+    liste2 = auflisten(neueliste)
+    _liste = liste1 + liste2
     lb_ausgabe.configure(text=_liste)
 
 def f_twlogon():
@@ -39,12 +46,14 @@ def f_twrefresh():
     print(token.atoken, token.rtoken)
 
 def f_flwr():
-    flwrlist = tapi_data.followlist(token)
-    ausgabe(flwrlist)
+    flwrlist, new_flwr = tapi_data.followlist(token)
+    print(f"\n\nNeu:{new_flwr}")
+    ausgabe(flwrlist, new_flwr)
 
 def f_sub():
-    sublist = tapi_data.sublist(token)
-    ausgabe(sublist)
+    sublist, newsub = tapi_data.sublist(token)
+    #print(f"\n\nNeu:{newsub}")
+    ausgabe(sublist, newsub)
     
 
 global token
