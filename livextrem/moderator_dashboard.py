@@ -131,7 +131,6 @@ def toggle_appearance_mode():
     else:
         btn_mode.configure(text="🌙 Dark Mode")
 
-# Mode Button: Größer gemacht
 btn_mode = ctk.CTkButton(sidebar, 
                         text="🌙 Dark Mode",
                         command=toggle_appearance_mode,
@@ -177,14 +176,13 @@ class HoverButton(ctk.CTkButton):
         self.hover_fg = HOVER_COLOR
         self.configure(fg_color=self.default_fg, hover_color=self.hover_fg)
 
-# Buttons: Deutlich vergrößert (Höhe 50, Breite 200, Font 18 Bold)
 btn_dashboard = HoverButton(sidebar, text="📊  Dashboard", width=200, height=50, font=("Arial", 18, "bold"), corner_radius=8)
 btn_chat = HoverButton(sidebar, text="💬  Chat Monitor", width=200, height=50, font=("Arial", 18, "bold"), corner_radius=8)
 btn_actions = HoverButton(sidebar, text="⚡  Aktionen", width=200, height=50, font=("Arial", 18, "bold"), corner_radius=8)
 btn_refresh = HoverButton(sidebar, text="🔄  Aktualisieren", width=200, height=50, font=("Arial", 18, "bold"), corner_radius=8)
 
 for b in (btn_dashboard, btn_chat, btn_actions, btn_refresh):
-    b.pack(pady=8, padx=10, fill="x") # pady leicht erhöht für besseren Abstand
+    b.pack(pady=8, padx=10, fill="x")
 
 # ---------- Content Area ----------
 content = ctk.CTkFrame(app, corner_radius=10)
@@ -357,27 +355,28 @@ def show_actions():
     tab_unban = tabview.add("✅ Unban")
     
     # ========== TIMEOUT TAB ==========
+    # HIER WURDE ANGEPASST: Abstände (pady) deutlich verringert, um alles nach oben zu ziehen
     timeout_form = ctk.CTkFrame(tab_timeout, fg_color="transparent")
-    timeout_form.pack(pady=30, padx=50)
+    timeout_form.pack(pady=10, padx=50) # War 30
     
     ctk.CTkLabel(timeout_form, text="User Timeout geben", 
-                font=("Arial", 28, "bold")).pack(pady=(0, 20))
+                font=("Arial", 28, "bold")).pack(pady=(0, 10)) # War (0, 20)
     
-    ctk.CTkLabel(timeout_form, text="Username:", font=("Arial", 24, "bold")).pack(pady=(10, 5))
+    ctk.CTkLabel(timeout_form, text="Username:", font=("Arial", 24, "bold")).pack(pady=(5, 2)) # War (10, 5)
     timeout_user_entry = ctk.CTkEntry(timeout_form, width=500, height=50, font=("Arial", 20), placeholder_text="z.B. troll123")
     timeout_user_entry.pack()
     
-    ctk.CTkLabel(timeout_form, text="Dauer (Minuten):", font=("Arial", 24, "bold")).pack(pady=(15, 5))
+    ctk.CTkLabel(timeout_form, text="Dauer (Minuten):", font=("Arial", 24, "bold")).pack(pady=(10, 2)) # War (15, 5)
     timeout_duration_entry = ctk.CTkEntry(timeout_form, width=500, height=50, font=("Arial", 20), placeholder_text="z.B. 10")
     timeout_duration_entry.pack()
     timeout_duration_entry.insert(0, "10")
     
-    ctk.CTkLabel(timeout_form, text="Grund (optional):", font=("Arial", 24, "bold")).pack(pady=(15, 5))
+    ctk.CTkLabel(timeout_form, text="Grund (optional):", font=("Arial", 24, "bold")).pack(pady=(10, 2)) # War (15, 5)
     timeout_reason_entry = ctk.CTkEntry(timeout_form, width=500, height=50, font=("Arial", 20), placeholder_text="z.B. Spam im Chat")
     timeout_reason_entry.pack()
     
     timeout_status = ctk.CTkLabel(timeout_form, text="", font=("Arial", 20))
-    timeout_status.pack(pady=(15, 0))
+    timeout_status.pack(pady=(10, 0)) # War (15, 0)
     
     def execute_timeout():
         username = timeout_user_entry.get().strip()
@@ -405,7 +404,7 @@ def show_actions():
     ctk.CTkButton(timeout_form, text="⏸️ Timeout ausführen", 
                  font=("Arial", 24, "bold"), height=60, width=350,
                  fg_color="#ffa500", hover_color="#ff8c00",
-                 command=execute_timeout).pack(pady=(30, 0))
+                 command=execute_timeout).pack(pady=(20, 0)) # War (30, 0)
     
     # ========== BAN TAB ==========
     ban_form = ctk.CTkFrame(tab_ban, fg_color="transparent")
