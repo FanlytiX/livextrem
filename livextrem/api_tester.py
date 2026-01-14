@@ -36,6 +36,7 @@ def f_twlogon():
     lb_status.configure(text=f"Angemeldet: {token.displayname}", text_color="green")
     bn_flwr.configure(state="enabled")
     bn_sub.configure(state="enabled")
+    bn_lst.configure(state="enabled")
     bn_twlogon.configure(state="disabled")
 
 def f_twrefresh():
@@ -51,9 +52,12 @@ def f_flwr():
     ausgabe(flwrlist, new_flwr)
 
 def f_sub():
-    sublist, newsub = tapi_data.sublist(token)
-    #print(f"\n\nNeu:{newsub}")
-    ausgabe(sublist, newsub)
+    sublist = tapi_data.sublist(token)
+    ausgabe(sublist, "")
+
+def f_lst():
+    streamlist = tapi_data.laststreams(token)
+    ausgabe(streamlist, "")
     
 
 global token
@@ -68,14 +72,22 @@ root.title("API tester")
 
 lb_status = ctk.CTkLabel(root, text="")
 lb_status.pack(pady=5)
+
 bn_twlogon = ctk.CTkButton(root, text="Twitch Anmelden", command=f_twlogon)
 bn_twlogon.pack(pady=2)
+
 bn_twrefresh = ctk.CTkButton(root, text="Twitch Refresh", command=f_twrefresh).pack(pady=2)
 ctk.CTkLabel(root, text="").pack()
+
 bn_flwr = ctk.CTkButton(root, text="Follower", command=f_flwr, state="disabled")
 bn_flwr.pack(pady=2)
+
 bn_sub = ctk.CTkButton(root, text="Subs", command=f_sub, state="disabled")
 bn_sub.pack(pady=2)
+
+bn_lst = ctk.CTkButton(root, text="Letzte Str.", command=f_lst, state="disabled")
+bn_lst.pack(pady=2)
+
 lb_ausgabe = ctk.CTkLabel(root, text="")
 lb_ausgabe.pack(pady=2)
 

@@ -14,7 +14,7 @@ def header(token): # Fertig
     return headers
 
 
-def laststreams(token, limit_per_page=100):
+def laststreams(token, limit_per_page=100): # Fertig
     """
     Ruft alle verfügbaren archivierten Streams (VODs) eines Nutzers ab.
     Twitch speichert VODs normalerweise 14-60 Tage (je nach Accounttyp).
@@ -48,29 +48,16 @@ def laststreams(token, limit_per_page=100):
 
         for video in data["data"]:
             stream_info = {
-                "id": video["id"],
+                #"id": video["id"],
                 "title": video["title"],
                 "created_at": video["created_at"],
                 "duration": video["duration"],
                 "views": video["view_count"],
-                "language": video.get("language"),
-                "game_id": video.get("game_id"),
-                "thumbnail_url": video.get("thumbnail_url"),
-                "url": video.get("url")
+                #"language": video.get("language"),
+                #"game_id": video.get("game_id"),
+                #"thumbnail_url": video.get("thumbnail_url"),
+                #"url": video.get("url")
             }
-
-            # Kategorie (Spiel) abrufen
-            if video.get("game_id"):
-                game_req = requests.get(
-                    f"https://api.twitch.tv/helix/games?id={video['game_id']}",
-                    headers=headers
-                ).json()
-                if "data" in game_req and game_req["data"]:
-                    stream_info["game_name"] = game_req["data"][0]["name"]
-                else:
-                    stream_info["game_name"] = None
-            else:
-                stream_info["game_name"] = None
 
             all_streams.append(stream_info)
 
@@ -89,33 +76,32 @@ def topbits(token):
     return bits
 
 
-def followlist(token): # Fertig
+def followlist(token, days=5): # Fertig
     """
-    Ruft alle aktuellen Follower auf und gib sie als Liste zurück
+    Ruft alle aktuellen Follower auf und gib sie als Liste zurück. Mit "days" wird der Zeitraum der neuen Follower definiert.
     """
     headers = header(token)
     response = requests.get(f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={token.userid}&first=100",headers=headers).json()
-    lastfive = _lastfive(response)
+    lastfive = _lastfive(response, days)
     usernames = _extract_usernames(response)
     return usernames, lastfive
     # Unkonvertiertes Dict {'total': 51, 'data': [{'user_id': '1401839278', 'user_login': 'flogstegi', 'user_name': 'flogstegi', 'followed_at': '2025-12-05T08:46:07Z'}
 
 
-def sublist(token): # Fertig
+def sublist(token): # Fertig, jedoch kann keine "letzten Subs" Liste zurück gegeben werden, da die API keine Daten hierfür liefert.
 
     """
     Ruft alle aktuellen Abonnenten (Subs) auf und gibt sie als Liste zurück.
     """
     headers = header(token)
     subslist = requests.get(f"https://api.twitch.tv/helix/subscriptions?broadcaster_id={token.userid}", headers=headers).json()
-    lastfive = _lastfive(subslist)
     subslist = _extract_usernames(subslist)
-    return subslist, lastfive
+    return subslist
 
 
-def _lastfive(response, days=5): # Fertig
+def _lastfive(response, days): # Fertig
     """
-    Filtert neue Einträge raus. Standard: days=5
+    Filtert neue Einträge raus.
     """
     result = []
     cutoff = datetime.utcnow() - timedelta(days=days)
