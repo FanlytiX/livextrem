@@ -297,77 +297,67 @@ def get_mod_history(token): # Kontrolle Ausstehend, funktioniert noch nicht
     return actions
 
 
-def ban_or_timeout_user(token, username, duration=0, reason=""): # Fertig
+def ban_or_timeout_user(token, username, broadcaster_id, duration=0, reason=""):
     """
-    Bannt oder timeoutet einen User im Twitch-Channel des Broadcasters.
+    Bannt oder timeoutet einen User im Channel eines Broadcasters,
+    ausgeführt durch einen Moderator.
 
     Args:
-        token: OAuth-Token-Objekt mit clientid, atoken, userid
-        username (str): Loginname des Users, z.B. "troll123"
-        duration (int): Timeout-Dauer in Sekunden. 0 = Permanenter Ban.
-        reason (str): Optionaler Grund.
-
-    Returns:
-        int: 0 = Erfolg, sonst HTTP-Fehlercode
-        0   Erfolg, 
-        400	Ungültige Parameter, 
-        401	Token ungültig, 
-        403	Dir fehlen Scopes / Du bist kein Mod, 
-        404	User existiert nicht, 
-        429	Rate Limit, 
-        500+	Twitch kotzt ab
+        token: OAuth-Token des MODERATORS
+        username (str): Ziel-User (login)
+        broadcaster_id (str): User-ID des Streamers
+        duration (int): Sekunden, 0 = Permabann
+        reason (str): Optionaler Grund
     """
 
     client_id = token.clientid
     access_token = token.atoken
-    broadcaster_id = token.userid
+    moderator_id = token.userid   # 👈 DAS ist der Mod
 
-    # 1) User-ID zur Username ermitteln
     headers = {
         "Client-ID": client_id,
         "Authorization": f"Bearer {access_token}"
     }
 
+    # 1️⃣ Ziel-User-ID ermitteln
     user_lookup = requests.get(
         f"https://api.twitch.tv/helix/users?login={username}",
         headers=headers
     ).json()
 
-    if "data" not in user_lookup or not user_lookup["data"]:
+    if not user_lookup.get("data"):
         print("❌ User nicht gefunden:", username)
         return 404
 
     target_user_id = user_lookup["data"][0]["id"]
 
-    # 2) Ban/Timeout ausführen
+    # 2️⃣ Ban / Timeout
     ban_url = (
-        f"https://api.twitch.tv/helix/moderation/bans"
+        "https://api.twitch.tv/helix/moderation/bans"
         f"?broadcaster_id={broadcaster_id}"
-        f"&moderator_id={broadcaster_id}"
+        f"&moderator_id={moderator_id}"
     )
 
     payload = {
         "data": {
             "user_id": target_user_id,
-            "duration": duration if duration > 0 else None,
             "reason": reason
         }
     }
 
-    # Falls permanenter Bann → Twitch verlangt KEINE duration
-    if duration == 0:
-        del payload["data"]["duration"]
+    if duration > 0:
+        payload["data"]["duration"] = duration
 
     headers_json = {
-        "Client-ID": client_id,
-        "Authorization": f"Bearer {access_token}",
+        **headers,
         "Content-Type": "application/json"
     }
 
     resp = requests.post(ban_url, json=payload, headers=headers_json)
 
     if resp.status_code in (200, 201, 204):
-        print(f"✅ Erfolg: User '{username}' wurde {'getimeouted' if duration else 'gebannt'}!")
+        action = "getimeouted" if duration else "gebannt"
+        print(f"✅ Erfolg: '{username}' wurde {action}")
         return 0
 
     print("❌ Fehler:", resp.status_code, resp.text)
