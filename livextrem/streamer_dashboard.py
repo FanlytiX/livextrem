@@ -121,6 +121,11 @@ class StreamerDashboard(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
+        # Filter-Variablen für Finanzen
+        self.finance_filter_start = None
+        self.finance_filter_end = None
+        self.finance_filter_type = "Alle"
+
         self._setup_sidebar()
         self._setup_content_area()
         self.show_view("Overview")
@@ -313,6 +318,49 @@ class StreamerDashboard(ctk.CTk):
         color_profit = COLOR_SUCCESS if profit >= 0 else COLOR_DANGER
         self._create_stat_card(top_grid, 2, "Gewinn / Verlust", f"{profit:.2f} €", "Vor Steuern", color_profit)
 
+        # Filter-Bereich
+        filter_frame = ctk.CTkFrame(self.content_frame, fg_color=COLOR_CARD)
+        filter_frame.pack(fill="x", pady=(0, 10))
+
+        filter_inner = ctk.CTkFrame(filter_frame, fg_color="transparent")
+        filter_inner.pack(fill="x", padx=15, pady=15)
+
+        ctk.CTkLabel(filter_inner, text="Filter:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(0, 15))
+
+        # Zeitraumfilter
+        ctk.CTkLabel(filter_inner, text="Von:").pack(side="left", padx=(0, 5))
+        if HAS_CALENDAR:
+            self.filter_start_cal = DateEntry(filter_inner, width=12, background=COLOR_PRIMARY[0],
+                                              foreground='white', borderwidth=2, locale='de_DE', 
+                                              date_pattern='dd.mm.yyyy')
+            self.filter_start_cal.pack(side="left", padx=(0, 10))
+        else:
+            self.filter_start_cal = ctk.CTkEntry(filter_inner, placeholder_text="DD.MM.YYYY", width=100)
+            self.filter_start_cal.pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(filter_inner, text="Bis:").pack(side="left", padx=(0, 5))
+        if HAS_CALENDAR:
+            self.filter_end_cal = DateEntry(filter_inner, width=12, background=COLOR_PRIMARY[0],
+                                            foreground='white', borderwidth=2, locale='de_DE', 
+                                            date_pattern='dd.mm.yyyy')
+            self.filter_end_cal.pack(side="left", padx=(0, 15))
+        else:
+            self.filter_end_cal = ctk.CTkEntry(filter_inner, placeholder_text="DD.MM.YYYY", width=100)
+            self.filter_end_cal.pack(side="left", padx=(0, 15))
+
+        # Typfilter
+        ctk.CTkLabel(filter_inner, text="Typ:").pack(side="left", padx=(0, 5))
+        self.filter_type_combo = ctk.CTkComboBox(filter_inner, values=["Alle", "Einnahme", "Ausgabe"], 
+                                                 state="readonly", width=120)
+        self.filter_type_combo.set("Alle")
+        self.filter_type_combo.pack(side="left", padx=(0, 15))
+
+        # Filter-Buttons
+        ctk.CTkButton(filter_inner, text="Anwenden", command=self._apply_finance_filter, 
+                      fg_color=COLOR_PRIMARY, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(filter_inner, text="Zurücksetzen", command=self._reset_finance_filter, 
+                      fg_color="gray50", width=100).pack(side="left", padx=5)
+
         list_container = ctk.CTkFrame(self.content_frame, fg_color=COLOR_CARD)
         list_container.pack(fill="both", expand=True, pady=20)
         
@@ -335,7 +383,6 @@ class StreamerDashboard(ctk.CTk):
     def _view_team(self):
         self._add_title("Team & Rollenverwaltung")
         
-        # ... (Rest wie vorher)
         list_frame = ctk.CTkFrame(self.content_frame, fg_color=COLOR_CARD)
         list_frame.pack(fill="both", expand=True)
         
@@ -415,10 +462,30 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkLabel(head_row, text="Aktion", width=80, anchor="e", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=15)
         ctk.CTkFrame(self.scroll_fin, height=2, fg_color="gray50").pack(fill="x", pady=5)
 
-        # Sortiere Finanzen nach Datum absteigend (neueste oben)
+        # Sortiere Finanzen nach Datum absteigend (neueste oben) und wende Filter an
         sorted_fin = sorted(MockData.finances, key=lambda x: x["date"], reverse=True)
 
+        # Filter anwenden
+        filtered_fin = []
         for entry in sorted_fin:
+            # Datumsfilter
+            if self.finance_filter_start or self.finance_filter_end:
+                try:
+                    entry_date = datetime.strptime(entry["date"], "%Y-%m-%d %H:%M")
+                    if self.finance_filter_start and entry_date < self.finance_filter_start:
+                        continue
+                    if self.finance_filter_end and entry_date > self.finance_filter_end:
+                        continue
+                except ValueError:
+                    continue
+            
+            # Typfilter
+            if self.finance_filter_type != "Alle" and entry["type"] != self.finance_filter_type:
+                continue
+            
+            filtered_fin.append(entry)
+
+        for entry in filtered_fin:
             row = ctk.CTkFrame(self.scroll_fin, fg_color="transparent")
             row.pack(fill="x", pady=2)
             
@@ -467,6 +534,56 @@ class StreamerDashboard(ctk.CTk):
                          command=lambda u=user: self._role_popup(u)).pack(side="left")
             ctk.CTkButton(action_row, text="🗑", width=30, fg_color="transparent", text_color=COLOR_DANGER,
                          command=lambda u=user: self._delete_team_member(u)).pack(side="left")
+
+    def _apply_finance_filter(self):
+        """Wendet die ausgewählten Filter an."""
+        try:
+            # Startdatum verarbeiten
+            if HAS_CALENDAR:
+                start_date = self.filter_start_cal.get_date()
+                self.finance_filter_start = datetime.combine(start_date, datetime.min.time())
+            else:
+                start_str = self.filter_start_cal.get()
+                if start_str:
+                    self.finance_filter_start = datetime.strptime(start_str, "%d.%m.%Y")
+                else:
+                    self.finance_filter_start = None
+            
+            # Enddatum verarbeiten
+            if HAS_CALENDAR:
+                end_date = self.filter_end_cal.get_date()
+                self.finance_filter_end = datetime.combine(end_date, datetime.max.time())
+            else:
+                end_str = self.filter_end_cal.get()
+                if end_str:
+                    self.finance_filter_end = datetime.strptime(end_str, "%d.%m.%Y").replace(hour=23, minute=59)
+                else:
+                    self.finance_filter_end = None
+            
+            # Typfilter
+            self.finance_filter_type = self.filter_type_combo.get()
+            
+            # Liste aktualisieren
+            self._refresh_finance_list()
+            
+        except ValueError:
+            mb.showerror("Fehler", "Ungültiges Datumsformat. Bitte DD.MM.YYYY verwenden.")
+
+    def _reset_finance_filter(self):
+        """Setzt alle Filter zurück."""
+        self.finance_filter_start = None
+        self.finance_filter_end = None
+        self.finance_filter_type = "Alle"
+        self.filter_type_combo.set("Alle")
+        
+        if HAS_CALENDAR:
+            self.filter_start_cal.set_date(datetime.now())
+            self.filter_end_cal.set_date(datetime.now())
+        else:
+            self.filter_start_cal.delete(0, "end")
+            self.filter_end_cal.delete(0, "end")
+        
+        self._refresh_finance_list()
 
     # --- ACTIONS ---
     def _toggle_todo(self, item, var):
