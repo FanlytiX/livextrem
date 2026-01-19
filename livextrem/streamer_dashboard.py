@@ -410,6 +410,31 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkLabel(content, text=value, font=ctk.CTkFont(size=32, weight="bold")).pack(anchor="w", pady=(5, 0))
         ctk.CTkLabel(content, text=subtext, font=ctk.CTkFont(size=12), text_color=color).pack(anchor="w", pady=(5, 0))
 
+    def _get_filtered_finances(self):
+        """Gibt die gefilterten Finanzdaten zurück - zentrale Methode für Filter-Logik."""
+        sorted_fin = sorted(MockData.finances, key=lambda x: x["date"], reverse=True)
+        
+        filtered_fin = []
+        for entry in sorted_fin:
+            # Datumsfilter
+            if self.finance_filter_start or self.finance_filter_end:
+                try:
+                    entry_date = datetime.strptime(entry["date"], "%Y-%m-%d %H:%M")
+                    if self.finance_filter_start and entry_date < self.finance_filter_start:
+                        continue
+                    if self.finance_filter_end and entry_date > self.finance_filter_end:
+                        continue
+                except ValueError:
+                    continue
+            
+            # Typfilter
+            if self.finance_filter_type != "Alle" and entry["type"] != self.finance_filter_type:
+                continue
+            
+            filtered_fin.append(entry)
+        
+        return filtered_fin
+
     def _refresh_todo_list(self):
         for w in self.todo_list_scroll.winfo_children(): w.destroy()
         
@@ -462,28 +487,8 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkLabel(head_row, text="Aktion", width=80, anchor="e", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=15)
         ctk.CTkFrame(self.scroll_fin, height=2, fg_color="gray50").pack(fill="x", pady=5)
 
-        # Sortiere Finanzen nach Datum absteigend (neueste oben) und wende Filter an
-        sorted_fin = sorted(MockData.finances, key=lambda x: x["date"], reverse=True)
-
-        # Filter anwenden
-        filtered_fin = []
-        for entry in sorted_fin:
-            # Datumsfilter
-            if self.finance_filter_start or self.finance_filter_end:
-                try:
-                    entry_date = datetime.strptime(entry["date"], "%Y-%m-%d %H:%M")
-                    if self.finance_filter_start and entry_date < self.finance_filter_start:
-                        continue
-                    if self.finance_filter_end and entry_date > self.finance_filter_end:
-                        continue
-                except ValueError:
-                    continue
-            
-            # Typfilter
-            if self.finance_filter_type != "Alle" and entry["type"] != self.finance_filter_type:
-                continue
-            
-            filtered_fin.append(entry)
+        # Gefilterte Daten abrufen
+        filtered_fin = self._get_filtered_finances()
 
         for entry in filtered_fin:
             row = ctk.CTkFrame(self.scroll_fin, fg_color="transparent")
@@ -876,21 +881,50 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
 
     # --- EXPORT (CSV/PDF) ---
+    def _get_filter_period_text(self):
+        """Erstellt einen Text für den Filterzeitraum."""
+        if not self.finance_filter_start and not self.finance_filter_end:
+            return "Zeitraum: Alle Buchungen"
+        
+        start_text = self.finance_filter_start.strftime("%d.%m.%Y") if self.finance_filter_start else "Beginn"
+        end_text = self.finance_filter_end.strftime("%d.%m.%Y") if self.finance_filter_end else "Ende"
+        
+        return f"Zeitraum: {start_text} bis {end_text}"
+
     def _export_csv(self):
+        # Gefilterte Daten abrufen
+        filtered_data = self._get_filtered_finances()
+        
+        if not filtered_data:
+            mb.showwarning("Warnung", "Keine Daten zum Exportieren vorhanden.")
+            return
+        
         filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
         if filename:
             try:
                 with open(filename, mode='w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f, delimiter=';')
+                    
+                    # Header mit Filterinformationen
+                    writer.writerow([self._get_filter_period_text()])
+                    if self.finance_filter_type != "Alle":
+                        writer.writerow([f"Typ-Filter: {self.finance_filter_type}"])
+                    writer.writerow([f"Anzahl Datensaetze: {len(filtered_data)}"])
+                    writer.writerow([])  # Leerzeile
+                    
+                    # Spaltenüberschriften
                     writer.writerow(["Datum", "Beschreibung", "Typ", "Betrag"])
-                    for row in MockData.finances:
+                    
+                    # Daten
+                    for row in filtered_data:
                          writer.writerow([
                              format_date_de(row["date"]),
                              row["desc"],
                              row["type"],
                              f"{row['amount']:.2f}".replace(".", ",")
                          ])
-                mb.showinfo("Export", f"CSV erfolgreich gespeichert:\n{filename}")
+                
+                mb.showinfo("Export", f"CSV erfolgreich gespeichert:\n{filename}\n\nExportierte Datensätze: {len(filtered_data)}")
             except Exception as e:
                 mb.showerror("Fehler", str(e))
 
@@ -899,17 +933,38 @@ class StreamerDashboard(ctk.CTk):
             mb.showerror("Fehler", "Bibliothek 'reportlab' fehlt.\nBitte 'pip install reportlab' ausführen.")
             return
 
+        # Gefilterte Daten abrufen
+        filtered_data = self._get_filtered_finances()
+        
+        if not filtered_data:
+            mb.showwarning("Warnung", "Keine Daten zum Exportieren vorhanden.")
+            return
+
         filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
         if filename:
             try:
                 c = canvas.Canvas(filename, pagesize=A4)
                 c.setTitle("EÜR Export")
                 
+                # Überschrift
                 c.setFont("Helvetica-Bold", 16)
                 c.drawString(50, 800, "Einnahmenüberschussrechnung (EÜR)")
                 
+                # Filterinformationen
                 c.setFont("Helvetica", 10)
-                y = 750
+                y = 770
+                c.drawString(50, y, self._get_filter_period_text())
+                y -= 15
+                
+                if self.finance_filter_type != "Alle":
+                    c.drawString(50, y, f"Typ-Filter: {self.finance_filter_type}")
+                    y -= 15
+                
+                c.drawString(50, y, f"Anzahl Datensätze: {len(filtered_data)}")
+                y -= 30
+                
+                # Tabellenüberschriften
+                c.setFont("Helvetica-Bold", 10)
                 c.drawString(50, y, "Datum")
                 c.drawString(150, y, "Beschreibung")
                 c.drawString(400, y, "Typ")
@@ -917,14 +972,19 @@ class StreamerDashboard(ctk.CTk):
                 y -= 20
                 c.line(50, y+15, 550, y+15)
 
+                c.setFont("Helvetica", 10)
                 total = 0
-                for row in MockData.finances:
+                row_count = 0
+                
+                for row in filtered_data:
                     if y < 50:
                         c.showPage()
+                        c.setFont("Helvetica", 10)
                         y = 800
                     
                     val = row['amount']
-                    if row['type'] == "Ausgabe": val = -val
+                    if row['type'] == "Ausgabe": 
+                        val = -val
                     total += val
                     
                     c.drawString(50, y, format_date_de(row["date"]).split(" ")[0])
@@ -932,7 +992,9 @@ class StreamerDashboard(ctk.CTk):
                     c.drawString(400, y, row["type"])
                     c.drawRightString(550, y, f"{row['amount']:.2f} €")
                     y -= 20
+                    row_count += 1
                 
+                # Summenzeile
                 c.line(50, y+10, 550, y+10)
                 y -= 20
                 c.setFont("Helvetica-Bold", 12)
@@ -942,11 +1004,15 @@ class StreamerDashboard(ctk.CTk):
                 c.drawRightString(550, y, f"{total:.2f} €")
                 
                 c.save()
-                mb.showinfo("Export", f"PDF erfolgreich erstellt:\n{filename}")
+                mb.showinfo("Export", f"PDF erfolgreich erstellt:\n{filename}\n\nExportierte Datensätze: {row_count}")
                 
-                if sys.platform == "win32": os.startfile(filename)
-                elif sys.platform == "darwin": os.system(f"open '{filename}'")
-                else: os.system(f"xdg-open '{filename}'")
+                # Datei öffnen
+                if sys.platform == "win32": 
+                    os.startfile(filename)
+                elif sys.platform == "darwin": 
+                    os.system(f"open '{filename}'")
+                else: 
+                    os.system(f"xdg-open '{filename}'")
 
             except Exception as e:
                 mb.showerror("Fehler", f"PDF Fehler: {str(e)}")
