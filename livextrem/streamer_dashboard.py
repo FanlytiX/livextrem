@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from PIL import Image
 
-# Kalender-Widget Import (muss installiert sein: pip install tkcalendar)
+# Kalender-Widget Import
 try:
     from tkcalendar import DateEntry
     HAS_CALENDAR = True
@@ -69,14 +69,14 @@ class MockData:
     ]
 
     team = [
-        {"name": "ModMaster99", "role": "Moderator", "since": "2024-01-15 12:00"},
-        {"name": "ManagerLisa", "role": "Manager", "since": "2024-06-01 09:30"}
+        {"name": "ModMaster99", "role": "Moderator", "since": "2024-01-15 12:00", "password": "password123"},
+        {"name": "ManagerLisa", "role": "Manager", "since": "2024-06-01 09:30", "password": "password123"}
     ]
 
     planned_streams = [
         {"id": 101, "title": "Just Chatting + React", "game": "Just Chatting", "date": "2025-11-22 18:00", "score": 85},
         {"id": 102, "title": "Elden Ring DLC Hardcore", "game": "Elden Ring", "date": "2025-11-24 19:30", "score": 92},
-        {"id": 103, "title": "Retro Sunday", "game": "Mario 64", "date": "2023-01-01 12:00", "score": 40}, # Altes Datum zum Testen
+        {"id": 103, "title": "Retro Sunday", "game": "Mario 64", "date": "2023-01-01 12:00", "score": 40}, 
     ]
 
 # ---------- HELPER ----------
@@ -104,7 +104,7 @@ def get_next_stream():
     future_streams.sort(key=lambda x: x[0])
     
     if future_streams:
-        return future_streams[0][1] # Gib das Stream-Objekt zurück
+        return future_streams[0][1] 
     return None
 
 # ---------- HAUPTKLASSE ----------
@@ -245,7 +245,6 @@ class StreamerDashboard(ctk.CTk):
         
         ctk.CTkLabel(next_frame, text="🚀 Nächster Stream", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=15, padx=15, anchor="w")
         
-        # LOGIK ÄNDERUNG: Nächsten Stream aus Zukunft holen
         nxt = get_next_stream()
         
         if nxt:
@@ -379,8 +378,12 @@ class StreamerDashboard(ctk.CTk):
 
         self._refresh_finance_list()
 
-    # --- VIEW: TEAM ---
+    # --- VIEW: TEAM (MIT FIX FÜR DOPPELTE ANZEIGE) ---
     def _view_team(self):
+        # !! HIER FIX: Vor dem Aufbau den alten Content löschen !!
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+
         self._add_title("Team & Rollenverwaltung")
         
         list_frame = ctk.CTkFrame(self.content_frame, fg_color=COLOR_CARD)
@@ -394,7 +397,36 @@ class StreamerDashboard(ctk.CTk):
         self.scroll_team = ctk.CTkScrollableFrame(list_frame, fg_color="transparent")
         self.scroll_team.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
-        self._refresh_team_list()
+        for user in MockData.team:
+            card = ctk.CTkFrame(self.scroll_team, fg_color="gray80" if ctk.get_appearance_mode()=="Light" else "gray25", corner_radius=10)
+            card.pack(fill="x", pady=5)
+            
+            ctk.CTkLabel(card, text="👤", font=ctk.CTkFont(size=24)).pack(side="left", padx=15, pady=10)
+            
+            info = ctk.CTkFrame(card, fg_color="transparent")
+            info.pack(side="left", fill="y", pady=5)
+            ctk.CTkLabel(info, text=user["name"], font=ctk.CTkFont(size=16, weight="bold"), anchor="w").pack(fill="x")
+            
+            de_since = format_date_de(user["since"])
+            ctk.CTkLabel(info, text=f"Seit: {de_since}", font=ctk.CTkFont(size=12), text_color="gray", anchor="w").pack(fill="x")
+            
+            badge_color = "#1c31ba" if user["role"] == "Manager" else COLOR_SUCCESS
+            
+            btn_box = ctk.CTkFrame(card, fg_color="transparent")
+            btn_box.pack(side="right", padx=10)
+            ctk.CTkButton(btn_box, text=user["role"], fg_color=badge_color, width=100, hover=False).pack(side="top", pady=2)
+            
+            action_row = ctk.CTkFrame(btn_box, fg_color="transparent")
+            action_row.pack(side="bottom", pady=2)
+            
+            # Button: Passwort ändern
+            ctk.CTkButton(action_row, text="🔑", width=30, fg_color="transparent", text_color=COLOR_PRIMARY[1],
+                         command=lambda u=user: self._change_password_popup(u)).pack(side="left")
+            
+            ctk.CTkButton(action_row, text="✏️", width=30, fg_color="transparent", text_color="gray",
+                         command=lambda u=user: self._role_popup(u)).pack(side="left")
+            ctk.CTkButton(action_row, text="🗑", width=30, fg_color="transparent", text_color=COLOR_DANGER,
+                         command=lambda u=user: self._delete_team_member(u)).pack(side="left")
 
     # --- HELPERS / REFRESHERS ---
     def _add_title(self, text):
@@ -411,12 +443,9 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkLabel(content, text=subtext, font=ctk.CTkFont(size=12), text_color=color).pack(anchor="w", pady=(5, 0))
 
     def _get_filtered_finances(self):
-        """Gibt die gefilterten Finanzdaten zurück - zentrale Methode für Filter-Logik."""
         sorted_fin = sorted(MockData.finances, key=lambda x: x["date"], reverse=True)
-        
         filtered_fin = []
         for entry in sorted_fin:
-            # Datumsfilter
             if self.finance_filter_start or self.finance_filter_end:
                 try:
                     entry_date = datetime.strptime(entry["date"], "%Y-%m-%d %H:%M")
@@ -426,13 +455,9 @@ class StreamerDashboard(ctk.CTk):
                         continue
                 except ValueError:
                     continue
-            
-            # Typfilter
             if self.finance_filter_type != "Alle" and entry["type"] != self.finance_filter_type:
                 continue
-            
             filtered_fin.append(entry)
-        
         return filtered_fin
 
     def _refresh_todo_list(self):
@@ -459,23 +484,18 @@ class StreamerDashboard(ctk.CTk):
 
     def _refresh_content_list(self):
         for w in self.scroll_plan.winfo_children(): w.destroy()
-        
-        # Sortierte Anzeige (nur für die Liste, Originaldaten bleiben)
         sorted_streams = sorted(MockData.planned_streams, key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d %H:%M"))
 
         for stream in sorted_streams:
             card = ctk.CTkFrame(self.scroll_plan, fg_color="gray80" if ctk.get_appearance_mode()=="Light" else "gray20")
             card.pack(fill="x", pady=5)
-            
             de_date = format_date_de(stream["date"])
-            
             ctk.CTkLabel(card, text=de_date, width=150, font=ctk.CTkFont(weight="bold")).pack(side="left", padx=10)
             ctk.CTkLabel(card, text=f"{stream['title']} ({stream['game']})", anchor="w").pack(side="left", fill="x", expand=True)
             ctk.CTkButton(card, text="Bearbeiten", width=80, fg_color="transparent", border_width=1, text_color=COLOR_TEXT,
                          command=lambda s=stream: self._content_popup(s)).pack(side="right", padx=10, pady=5)
 
     def _refresh_finance_list(self):
-        # Frame leeren
         for w in self.scroll_fin.winfo_children(): w.destroy()
             
         head_row = ctk.CTkFrame(self.scroll_fin, fg_color="transparent")
@@ -487,23 +507,17 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkLabel(head_row, text="Aktion", width=80, anchor="e", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=15)
         ctk.CTkFrame(self.scroll_fin, height=2, fg_color="gray50").pack(fill="x", pady=5)
 
-        # Gefilterte Daten abrufen
         filtered_fin = self._get_filtered_finances()
 
         for entry in filtered_fin:
             row = ctk.CTkFrame(self.scroll_fin, fg_color="transparent")
             row.pack(fill="x", pady=2)
-            
             de_date = format_date_de(entry["date"])
-            
             ctk.CTkLabel(row, text=de_date, width=120, anchor="w").pack(side="left", padx=5)
             ctk.CTkLabel(row, text=entry["desc"], width=250, anchor="w").pack(side="left", padx=5)
-            
             type_color = COLOR_SUCCESS if entry["type"] == "Einnahme" else "#D2601A"
             ctk.CTkLabel(row, text=entry["type"], width=80, text_color=type_color, anchor="w").pack(side="left", padx=5)
-            
             ctk.CTkLabel(row, text=f"{entry['amount']:.2f} €", width=80, anchor="e").pack(side="left", padx=5)
-
             btn_box = ctk.CTkFrame(row, fg_color="transparent")
             btn_box.pack(side="right", padx=5)
             ctk.CTkButton(btn_box, text="✏️", width=30, fg_color="transparent", text_color="gray",
@@ -511,39 +525,8 @@ class StreamerDashboard(ctk.CTk):
             ctk.CTkButton(btn_box, text="🗑", width=30, fg_color="transparent", text_color=COLOR_DANGER,
                          command=lambda e=entry: self._delete_finance(e)).pack(side="left")
 
-    def _refresh_team_list(self):
-        for w in self.scroll_team.winfo_children(): w.destroy()
-
-        for user in MockData.team:
-            card = ctk.CTkFrame(self.scroll_team, fg_color="gray80" if ctk.get_appearance_mode()=="Light" else "gray25", corner_radius=10)
-            card.pack(fill="x", pady=5)
-            
-            ctk.CTkLabel(card, text="👤", font=ctk.CTkFont(size=24)).pack(side="left", padx=15, pady=10)
-            
-            info = ctk.CTkFrame(card, fg_color="transparent")
-            info.pack(side="left", fill="y", pady=5)
-            ctk.CTkLabel(info, text=user["name"], font=ctk.CTkFont(size=16, weight="bold"), anchor="w").pack(fill="x")
-            
-            de_since = format_date_de(user["since"])
-            ctk.CTkLabel(info, text=f"Seit: {de_since}", font=ctk.CTkFont(size=12), text_color="gray", anchor="w").pack(fill="x")
-            
-            badge_color = "#1c31ba" if user["role"] == "Manager" else COLOR_SUCCESS
-            
-            btn_box = ctk.CTkFrame(card, fg_color="transparent")
-            btn_box.pack(side="right", padx=10)
-            ctk.CTkButton(btn_box, text=user["role"], fg_color=badge_color, width=100, hover=False).pack(side="top", pady=2)
-            
-            action_row = ctk.CTkFrame(btn_box, fg_color="transparent")
-            action_row.pack(side="bottom", pady=2)
-            ctk.CTkButton(action_row, text="✏️", width=30, fg_color="transparent", text_color="gray",
-                         command=lambda u=user: self._role_popup(u)).pack(side="left")
-            ctk.CTkButton(action_row, text="🗑", width=30, fg_color="transparent", text_color=COLOR_DANGER,
-                         command=lambda u=user: self._delete_team_member(u)).pack(side="left")
-
     def _apply_finance_filter(self):
-        """Wendet die ausgewählten Filter an."""
         try:
-            # Startdatum verarbeiten
             if HAS_CALENDAR:
                 start_date = self.filter_start_cal.get_date()
                 self.finance_filter_start = datetime.combine(start_date, datetime.min.time())
@@ -554,7 +537,6 @@ class StreamerDashboard(ctk.CTk):
                 else:
                     self.finance_filter_start = None
             
-            # Enddatum verarbeiten
             if HAS_CALENDAR:
                 end_date = self.filter_end_cal.get_date()
                 self.finance_filter_end = datetime.combine(end_date, datetime.max.time())
@@ -565,29 +547,22 @@ class StreamerDashboard(ctk.CTk):
                 else:
                     self.finance_filter_end = None
             
-            # Typfilter
             self.finance_filter_type = self.filter_type_combo.get()
-            
-            # Liste aktualisieren
             self._refresh_finance_list()
-            
         except ValueError:
             mb.showerror("Fehler", "Ungültiges Datumsformat. Bitte DD.MM.YYYY verwenden.")
 
     def _reset_finance_filter(self):
-        """Setzt alle Filter zurück."""
         self.finance_filter_start = None
         self.finance_filter_end = None
         self.finance_filter_type = "Alle"
         self.filter_type_combo.set("Alle")
-        
         if HAS_CALENDAR:
             self.filter_start_cal.set_date(datetime.now())
             self.filter_end_cal.set_date(datetime.now())
         else:
             self.filter_start_cal.delete(0, "end")
             self.filter_end_cal.delete(0, "end")
-        
         self._refresh_finance_list()
 
     # --- ACTIONS ---
@@ -620,7 +595,7 @@ class StreamerDashboard(ctk.CTk):
     def _delete_finance(self, entry):
         if entry in MockData.finances:
             MockData.finances.remove(entry)
-            self.show_view("Finance") # Refresh mit Clean
+            self.show_view("Finance") 
 
     def _delete_team_member(self, user):
         if user in MockData.team:
@@ -679,7 +654,6 @@ class StreamerDashboard(ctk.CTk):
 
         # DATE PICKER
         ctk.CTkLabel(d, text="Datum & Uhrzeit").pack(anchor="w", padx=20)
-        
         date_frame = ctk.CTkFrame(d, fg_color="transparent")
         date_frame.pack(fill="x", padx=20, pady=(0,10))
         
@@ -688,13 +662,11 @@ class StreamerDashboard(ctk.CTk):
                             foreground='white', borderwidth=2, locale='de_DE', date_pattern='dd.mm.yyyy')
             cal.pack(side="left", padx=(0,10))
         else:
-            # Fallback wenn tkcalendar nicht installiert ist
             cal = ctk.CTkEntry(date_frame, placeholder_text="DD.MM.YYYY")
             cal.pack(side="left", fill="x", expand=True)
 
-        # Time Pickers
         hours = [f"{i:02d}" for i in range(24)]
-        minutes = [f"{i:02d}" for i in range(0, 60, 15)] # 15 min schritte
+        minutes = [f"{i:02d}" for i in range(0, 60, 15)]
         
         time_h = ctk.CTkComboBox(date_frame, values=hours, width=60)
         time_h.pack(side="left", padx=2)
@@ -705,14 +677,11 @@ class StreamerDashboard(ctk.CTk):
         if stream_data:
             e_title.insert(0, stream_data["title"])
             e_game.insert(0, stream_data["game"])
-            
-            # Datum/Zeit parsing
             dt = datetime.strptime(stream_data["date"], "%Y-%m-%d %H:%M")
             if HAS_CALENDAR:
                 cal.set_date(dt)
             else:
                 cal.insert(0, dt.strftime("%d.%m.%Y"))
-            
             time_h.set(dt.strftime("%H"))
             time_m.set(dt.strftime("%M"))
         else:
@@ -728,7 +697,6 @@ class StreamerDashboard(ctk.CTk):
                     d_str = cal.get()
                 
                 t_str = f"{time_h.get()}:{time_m.get()}"
-                
                 dt = datetime.strptime(f"{d_str} {t_str}", "%d.%m.%Y %H:%M")
                 iso_date = dt.strftime("%Y-%m-%d %H:%M")
                 
@@ -799,21 +767,17 @@ class StreamerDashboard(ctk.CTk):
         def save():
             txt = desc.get()
             amt_str = amount.get()
-            
-            # AUTOMATIC ,00 FIX
             if amt_str and "," not in amt_str and "." not in amt_str:
                 amt_str += ",00"
-
             if not txt or not amt_str:
                 mb.showerror("Fehler", "Bitte Text UND Betrag eingeben.")
                 return
             
             try:
                 real_amt = float(amt_str.replace(",", "."))
-                
                 if HAS_CALENDAR:
                     d_obj = cal.get_date()
-                    iso_date = d_obj.strftime("%Y-%m-%d 12:00") # Default Time
+                    iso_date = d_obj.strftime("%Y-%m-%d 12:00") 
                 else:
                     try:
                         dt = datetime.strptime(cal.get(), "%d.%m.%Y")
@@ -835,8 +799,6 @@ class StreamerDashboard(ctk.CTk):
                         "amount": real_amt, 
                         "type": ftype.get()
                     })
-                
-                # BUG FIX: Hier wichtig show_view aufrufen, um das Content Frame zu clearen!
                 self.show_view("Finance")
                 d.destroy()
             except ValueError:
@@ -844,78 +806,177 @@ class StreamerDashboard(ctk.CTk):
 
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
 
+    # --- POPUP: TEAM/ROLLEN (MIT VALIDIERUNG) ---
     def _role_popup(self, user_data=None):
         d = ctk.CTkToplevel(self)
-        t_text = "Rolle bearbeiten" if user_data else "Rolle vergeben"
+        t_text = "Rolle bearbeiten" if user_data else "Neue Rolle & User"
         d.title(t_text)
-        d.geometry("400x350")
+        d.geometry("400x550" if not user_data else "400x350")
         d.transient(self)
         d.grab_set()
         
         ctk.CTkLabel(d, text=t_text, font=ctk.CTkFont(size=18, weight="bold")).pack(pady=20)
         
-        name = ctk.CTkEntry(d, placeholder_text="Twitch Username")
-        name.pack(pady=10, padx=20, fill="x")
+        ctk.CTkLabel(d, text="Twitch Username *", text_color=COLOR_DANGER).pack(anchor="w", padx=20)
+        name = ctk.CTkEntry(d, placeholder_text="Name eingeben")
+        name.pack(pady=(0, 10), padx=20, fill="x")
         
+        # HIER FIX: Rolle ist nun Pflichtfeld mit Sternchen
+        ctk.CTkLabel(d, text="Rolle zuweisen *", text_color=COLOR_DANGER).pack(anchor="w", padx=20)
         role = ctk.CTkComboBox(d, values=["Moderator", "Manager"], state="readonly")
-        role.pack(pady=10, padx=20, fill="x")
+        role.pack(pady=(0, 10), padx=20, fill="x")
+
+        pw_entry = None
+        pw_confirm = None
+        
+        if not user_data:
+            ctk.CTkFrame(d, height=2, fg_color="gray50").pack(fill="x", padx=20, pady=10)
+            ctk.CTkLabel(d, text="Initiales Passwort festlegen", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=20)
+            
+            ctk.CTkLabel(d, text="Passwort (min. 6 Zeichen) *", text_color=COLOR_DANGER).pack(anchor="w", padx=20)
+            pw_entry = ctk.CTkEntry(d, show="*", placeholder_text="Geheim...")
+            pw_entry.pack(pady=(0, 10), padx=20, fill="x")
+            
+            ctk.CTkLabel(d, text="Passwort bestätigen *", text_color=COLOR_DANGER).pack(anchor="w", padx=20)
+            pw_confirm = ctk.CTkEntry(d, show="*", placeholder_text="Wiederholen...")
+            pw_confirm.pack(pady=(0, 5), padx=20, fill="x")
+            
+            def toggle_pw():
+                new_show = "" if show_var.get() else "*"
+                pw_entry.configure(show=new_show)
+                pw_confirm.configure(show=new_show)
+
+            show_var = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(d, text="Passwörter anzeigen", variable=show_var, command=toggle_pw).pack(anchor="w", padx=20, pady=5)
 
         if user_data:
             name.insert(0, user_data["name"])
             role.set(user_data["role"])
         
         def save():
-            if name.get():
-                if user_data:
-                    user_data["name"] = name.get()
-                    user_data["role"] = role.get()
-                else:
-                    MockData.team.append({
-                        "name": name.get(),
-                        "role": role.get(),
-                        "since": datetime.now().strftime("%Y-%m-%d %H:%M")
-                    })
-                self._refresh_team_list()
-                d.destroy()
+            if not name.get():
+                mb.showerror("Fehler", "Benutzername ist Pflicht.")
+                return
+            
+            # HIER FIX: Validierung ob Rolle ausgewählt wurde
+            if not role.get():
+                mb.showerror("Fehler", "Bitte eine Rolle auswählen.")
+                return
+
+            if not user_data:
+                p1 = pw_entry.get()
+                p2 = pw_confirm.get()
+                if not p1 or not p2:
+                    mb.showerror("Fehler", "Passwortfelder sind Pflichtfelder.")
+                    return
+                if len(p1) < 6:
+                    mb.showerror("Fehler", "Passwort muss mindestens 6 Zeichen lang sein.")
+                    return
+                if p1 != p2:
+                    mb.showerror("Fehler", "Passwörter stimmen nicht überein.")
+                    return
+                
+                MockData.team.append({
+                    "name": name.get(),
+                    "role": role.get(),
+                    "since": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "password": p1
+                })
+                mb.showinfo("Erfolg", "Benutzer erfolgreich angelegt.")
+            else:
+                user_data["name"] = name.get()
+                user_data["role"] = role.get()
+                mb.showinfo("Erfolg", "Benutzerdaten aktualisiert.")
+
+            self._view_team()
+            d.destroy()
 
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
 
+    # --- POPUP: PASSWORT ÄNDERN ---
+    def _change_password_popup(self, user):
+        d = ctk.CTkToplevel(self)
+        d.title(f"Passwort ändern: {user['name']}")
+        d.geometry("400x500")
+        d.transient(self)
+        d.grab_set()
+
+        ctk.CTkLabel(d, text="Passwort Sicherheit", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=15)
+
+        info_frame = ctk.CTkFrame(d, fg_color="transparent", border_width=1, border_color="gray")
+        info_frame.pack(fill="x", padx=20, pady=(0, 20))
+        ctk.CTkLabel(info_frame, text="Aus Sicherheitsgründen wird das aktuelle\nPasswort nicht angezeigt.", 
+                     text_color="gray", font=ctk.CTkFont(size=12)).pack(pady=10)
+
+        ctk.CTkLabel(d, text="Aktuelles Passwort", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=20)
+        old_pw = ctk.CTkEntry(d, show="*")
+        old_pw.pack(fill="x", padx=20, pady=(0, 15))
+
+        ctk.CTkLabel(d, text="Neues Passwort (min. 6 Zeichen)", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=20)
+        new_pw = ctk.CTkEntry(d, show="*")
+        new_pw.pack(fill="x", padx=20, pady=(0, 15))
+
+        ctk.CTkLabel(d, text="Neues Passwort bestätigen", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=20)
+        conf_pw = ctk.CTkEntry(d, show="*")
+        conf_pw.pack(fill="x", padx=20, pady=(0, 5))
+
+        def toggle_all():
+            new_s = "" if show_all_var.get() else "*"
+            old_pw.configure(show=new_s)
+            new_pw.configure(show=new_s)
+            conf_pw.configure(show=new_s)
+
+        show_all_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(d, text="Alle Passwörter anzeigen", variable=show_all_var, command=toggle_all).pack(anchor="w", padx=20, pady=10)
+
+        def save_pw():
+            if old_pw.get() != user.get("password", ""):
+                mb.showerror("Fehler", "Das aktuelle Passwort ist falsch.")
+                return
+            
+            p_new = new_pw.get()
+            p_conf = conf_pw.get()
+            
+            if len(p_new) < 6:
+                mb.showerror("Fehler", "Das neue Passwort ist zu kurz (min. 6).")
+                return
+            if p_new != p_conf:
+                mb.showerror("Fehler", "Die neuen Passwörter stimmen nicht überein.")
+                return
+            if p_new == old_pw.get():
+                mb.showerror("Fehler", "Das neue Passwort darf nicht das alte sein.")
+                return
+
+            user["password"] = p_new
+            mb.showinfo("Erfolg", f"Passwort für {user['name']} erfolgreich geändert.")
+            d.destroy()
+
+        ctk.CTkButton(d, text="Passwort aktualisieren", command=save_pw, fg_color=COLOR_PRIMARY).pack(pady=20)
+
     # --- EXPORT (CSV/PDF) ---
     def _get_filter_period_text(self):
-        """Erstellt einen Text für den Filterzeitraum."""
         if not self.finance_filter_start and not self.finance_filter_end:
             return "Zeitraum: Alle Buchungen"
-        
         start_text = self.finance_filter_start.strftime("%d.%m.%Y") if self.finance_filter_start else "Beginn"
         end_text = self.finance_filter_end.strftime("%d.%m.%Y") if self.finance_filter_end else "Ende"
-        
         return f"Zeitraum: {start_text} bis {end_text}"
 
     def _export_csv(self):
-        # Gefilterte Daten abrufen
         filtered_data = self._get_filtered_finances()
-        
         if not filtered_data:
             mb.showwarning("Warnung", "Keine Daten zum Exportieren vorhanden.")
             return
-        
         filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
         if filename:
             try:
                 with open(filename, mode='w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f, delimiter=';')
-                    
-                    # Header mit Filterinformationen
                     writer.writerow([self._get_filter_period_text()])
                     if self.finance_filter_type != "Alle":
                         writer.writerow([f"Typ-Filter: {self.finance_filter_type}"])
                     writer.writerow([f"Anzahl Datensaetze: {len(filtered_data)}"])
-                    writer.writerow([])  # Leerzeile
-                    
-                    # Spaltenüberschriften
+                    writer.writerow([])
                     writer.writerow(["Datum", "Beschreibung", "Typ", "Betrag"])
-                    
-                    # Daten
                     for row in filtered_data:
                          writer.writerow([
                              format_date_de(row["date"]),
@@ -923,7 +984,6 @@ class StreamerDashboard(ctk.CTk):
                              row["type"],
                              f"{row['amount']:.2f}".replace(".", ",")
                          ])
-                
                 mb.showinfo("Export", f"CSV erfolgreich gespeichert:\n{filename}\n\nExportierte Datensätze: {len(filtered_data)}")
             except Exception as e:
                 mb.showerror("Fehler", str(e))
@@ -932,10 +992,7 @@ class StreamerDashboard(ctk.CTk):
         if not HAS_REPORTLAB:
             mb.showerror("Fehler", "Bibliothek 'reportlab' fehlt.\nBitte 'pip install reportlab' ausführen.")
             return
-
-        # Gefilterte Daten abrufen
         filtered_data = self._get_filtered_finances()
-        
         if not filtered_data:
             mb.showwarning("Warnung", "Keine Daten zum Exportieren vorhanden.")
             return
@@ -946,24 +1003,19 @@ class StreamerDashboard(ctk.CTk):
                 c = canvas.Canvas(filename, pagesize=A4)
                 c.setTitle("EÜR Export")
                 
-                # Überschrift
                 c.setFont("Helvetica-Bold", 16)
                 c.drawString(50, 800, "Einnahmenüberschussrechnung (EÜR)")
                 
-                # Filterinformationen
                 c.setFont("Helvetica", 10)
                 y = 770
                 c.drawString(50, y, self._get_filter_period_text())
                 y -= 15
-                
                 if self.finance_filter_type != "Alle":
                     c.drawString(50, y, f"Typ-Filter: {self.finance_filter_type}")
                     y -= 15
-                
                 c.drawString(50, y, f"Anzahl Datensätze: {len(filtered_data)}")
                 y -= 30
                 
-                # Tabellenüberschriften
                 c.setFont("Helvetica-Bold", 10)
                 c.drawString(50, y, "Datum")
                 c.drawString(150, y, "Beschreibung")
@@ -994,7 +1046,6 @@ class StreamerDashboard(ctk.CTk):
                     y -= 20
                     row_count += 1
                 
-                # Summenzeile
                 c.line(50, y+10, 550, y+10)
                 y -= 20
                 c.setFont("Helvetica-Bold", 12)
@@ -1005,8 +1056,6 @@ class StreamerDashboard(ctk.CTk):
                 
                 c.save()
                 mb.showinfo("Export", f"PDF erfolgreich erstellt:\n{filename}\n\nExportierte Datensätze: {row_count}")
-                
-                # Datei öffnen
                 if sys.platform == "win32": 
                     os.startfile(filename)
                 elif sys.platform == "darwin": 
@@ -1016,7 +1065,6 @@ class StreamerDashboard(ctk.CTk):
 
             except Exception as e:
                 mb.showerror("Fehler", f"PDF Fehler: {str(e)}")
-
 
 if __name__ == "__main__":
     app = StreamerDashboard()
