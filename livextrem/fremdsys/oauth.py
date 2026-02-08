@@ -6,11 +6,16 @@ import urllib.parse
 from . import tw_privdata
 
 twd = tw_privdata.Daten()
+from config import Config
+
+def twd_redirect_uri():
+    # allow override via ENV
+    return Config.TWITCH_REDIRECT_URI
 
 # === Twitch OAuth Daten ===
 CLIENT_ID = twd.client_id
 CLIENT_SECRET = twd.client_secret
-REDIRECT_URI = "http://localhost:8080"
+REDIRECT_URI = twd_redirect_uri()
 
 # >>> SCOPES wurden hier sauber integriert <<<
 SCOPES = [
@@ -35,6 +40,8 @@ auth_event = threading.Event()
 token_info = None
 
 def gen():
+    Config.validate()
+
     """
     Meldet den Benutzer neu an. Sollte der Benutzer bereits angemeldet sein, wird die Anmeldung übersprungen.
     """
@@ -48,6 +55,8 @@ def gen():
 
 
 def gen_direct():
+    Config.validate()
+
     """
     Direkte Anmeldung des Benutzers, ohne Prüfung, ob der Nutzer angemeldet ist.
     """

@@ -27,6 +27,8 @@ else:
     ctk.set_default_color_theme("blue")
 
 # ---------- Globale Variablen ----------
+session = None  # wird vom Router gesetzt (SessionUser)
+
 db = None
 mod_queries = None
 twitch_token = None
@@ -41,47 +43,14 @@ app.grid_rowconfigure(0, weight=1)
 
 # ---------- Twitch Login ----------
 def twitch_login():
-    """
-    Prüft erst auf übergebene Argumente vom Launcher.
-    Wenn keine da sind, öffnet es den Browser Login.
-    """
+    """Twitch-Login (Token nur im RAM). Wenn bereits eingeloggt (oauth.gen), wird kein Browser geöffnet."""
     global twitch_token
-    
-    # Check auf Argumente vom Launcher
-    if len(sys.argv) >= 8:
-        try:
-            arg_atoken = sys.argv[1]
-            arg_rtoken = sys.argv[2]
-            arg_name = sys.argv[3]
-            arg_cid = sys.argv[4]      
-            arg_csec = sys.argv[5]     
-            arg_uid = sys.argv[6]      
-            arg_login = sys.argv[7]    
-            
-            class LauncherToken:
-                def __init__(self, at, rt, dn, cid, csec, uid, ln):
-                    self.atoken = at
-                    self.rtoken = rt
-                    self.displayname = dn
-                    self.clientid = cid      
-                    self.clientsecret = csec   
-                    self.userid = uid          
-                    self.loginname = ln        
-            
-            twitch_token = LauncherToken(arg_atoken, arg_rtoken, arg_name, arg_cid, arg_csec, arg_uid, arg_login)
-            print(f"Login erfolgreich vom Launcher übernommen: {twitch_token.displayname}")
-            return True
-        except Exception as e:
-            print(f"Fehler bei Token-Übernahme: {e}")
-
-    # Fallback: Normaler Login via Browser
     try:
         from fremdsys import oauth
-        mb.showinfo("Twitch Login", "Keine Sitzung gefunden.\nBrowser öffnet sich für Twitch-Anmeldung.")
         twitch_token = oauth.gen()
         return True
     except Exception as e:
-        mb.showerror("Login-Fehler", f"Twitch-Login fehlgeschlagen:\n{e}")
+        mb.showerror("Twitch Login", f"Twitch Login fehlgeschlagen: {e}")
         return False
 
 # ---------- Datenbank initialisieren ----------
@@ -94,7 +63,14 @@ def init_database():
         if not twitch_login():
             return False
         
-        mod_queries = ModeratorQueries(db, twitch_token)
+        broadcaster_id = None
+        try:
+            if session and getattr(session, 'streamer', None):
+                broadcaster_id = session.streamer.get('twitch_userid')
+        except Exception:
+            broadcaster_id = None
+
+        mod_queries = ModeratorQueries(db, twitch_token, broadcaster_id=broadcaster_id)
         
         mb.showinfo("Chat laden", "Lade Chat-Nachrichten vom letzten VOD...\nDies kann einen Moment dauern.")
         success = mod_queries.load_vod_chat()
@@ -108,6 +84,14 @@ def init_database():
                 mb.showinfo("Chat geladen", f"Chat erfolgreich geladen!\n\nVOD: {vod.get('title', 'Unbekannt')}")
         
         mod_queries.cleanup_expired_actions()
+
+        if not mod_queries.broadcaster_id:
+            mb.showwarning(
+                "Streamer-Zuordnung",
+                "Achtung: Kein zugeordneter Streamer (broadcaster_id fehlt).\n"
+                "Timeout/Ban/Unban funktionieren erst, wenn der Streamer einmal per Twitch eingeloggt ist "
+                "(damit seine Twitch-ID in twitch_tokens gespeichert wird) und der Moderator/Manager korrekt zugeordnet ist."
+            )
         return True
     except Exception as e:
         mb.showerror("Datenbankfehler", f"Initialisierung fehlgeschlagen:\n{e}")
@@ -493,6 +477,14 @@ def clear_content():
 def refresh_data():
     if mod_queries:
         mod_queries.cleanup_expired_actions()
+
+        if not mod_queries.broadcaster_id:
+            mb.showwarning(
+                "Streamer-Zuordnung",
+                "Achtung: Kein zugeordneter Streamer (broadcaster_id fehlt).\n"
+                "Timeout/Ban/Unban funktionieren erst, wenn der Streamer einmal per Twitch eingeloggt ist "
+                "(damit seine Twitch-ID in twitch_tokens gespeichert wird) und der Moderator/Manager korrekt zugeordnet ist."
+            )
         
         mb.showinfo("Chat neu laden", "Lade Chat-Nachrichten neu...")
         success = mod_queries.load_vod_chat()

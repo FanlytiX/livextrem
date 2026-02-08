@@ -364,7 +364,7 @@ def ban_or_timeout_user(token, username, broadcaster_id, duration=0, reason=""):
     return resp.status_code
 
 
-def unban_user(token, username): # Fertig
+def unban_user(token, username, broadcaster_id): # Fertig
     """
     Hebt den Bann eines Users auf (Unban).
 
@@ -384,7 +384,7 @@ def unban_user(token, username): # Fertig
     
     client_id = token.clientid
     access_token = token.atoken
-    broadcaster_id = token.userid
+    # broadcaster_id wird von außen übergeben (Streamer)
 
     # 1) User-ID zum Username ermitteln
     headers = {
@@ -407,7 +407,7 @@ def unban_user(token, username): # Fertig
     unban_url = (
         f"https://api.twitch.tv/helix/moderation/bans"
         f"?broadcaster_id={broadcaster_id}"
-        f"&moderator_id={broadcaster_id}"
+        f"&moderator_id={token.userid}"
         f"&user_id={target_user_id}"
     )
 

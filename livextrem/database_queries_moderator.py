@@ -7,9 +7,10 @@ from database_connection import DatabaseManager
 from datetime import datetime, timedelta
 
 class ModeratorQueries:
-    def __init__(self, db_manager, twitch_token=None):
+    def __init__(self, db_manager, twitch_token=None, broadcaster_id=None):
         self.db = db_manager
         self.token = twitch_token  # OAuth Token von oauth.gen()
+        self.broadcaster_id = str(broadcaster_id) if broadcaster_id else None  # Twitch-UserID des Streamers (Channel)
         
         # Lokale Datenspeicher für Moderationsaktionen
         self.moderation_actions = []
@@ -90,10 +91,13 @@ class ModeratorQueries:
         """Bannt einen User permanent via Twitch API"""
         if not self.token:
             return {"success": False, "message": "Kein Twitch-Token vorhanden"}
+        if not self.broadcaster_id:
+            return {"success": False, "message": "Kein zugeordneter Streamer (broadcaster_id fehlt). Bitte den Streamer einmal mit Twitch einloggen lassen."}
+
         
         try:
             from fremdsys import tapi_mod
-            result = tapi_mod.ban_or_timeout_user(self.token, username, duration=0, reason=grund)
+            result = tapi_mod.ban_or_timeout_user(self.token, username, self.broadcaster_id, duration=0, reason=grund)
             
             if result == 0:
                 # Aktion lokal speichern
@@ -113,11 +117,14 @@ class ModeratorQueries:
         """Gibt einem User einen Timeout via Twitch API"""
         if not self.token:
             return {"success": False, "message": "Kein Twitch-Token vorhanden"}
+        if not self.broadcaster_id:
+            return {"success": False, "message": "Kein zugeordneter Streamer (broadcaster_id fehlt). Bitte den Streamer einmal mit Twitch einloggen lassen."}
+
         
         try:
             from fremdsys import tapi_mod
             dauer_sekunden = dauer_minuten * 60
-            result = tapi_mod.ban_or_timeout_user(self.token, username, duration=dauer_sekunden, reason=grund)
+            result = tapi_mod.ban_or_timeout_user(self.token, username, self.broadcaster_id, duration=dauer_sekunden, reason=grund)
             
             if result == 0:
                 # Aktion lokal speichern
@@ -137,10 +144,12 @@ class ModeratorQueries:
         """Hebt einen Bann auf via Twitch API"""
         if not self.token:
             return {"success": False, "message": "Kein Twitch-Token vorhanden"}
+        if not self.broadcaster_id:
+            return {"success": False, "message": "Kein zugeordneter Streamer (broadcaster_id fehlt). Bitte den Streamer einmal mit Twitch einloggen lassen."}
         
         try:
             from fremdsys import tapi_mod
-            result = tapi_mod.unban_user(self.token, username)
+            result = tapi_mod.unban_user(self.token, username, self.broadcaster_id)
             
             if result == 0:
                 # Aktion lokal speichern
