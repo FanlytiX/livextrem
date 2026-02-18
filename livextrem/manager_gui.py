@@ -65,7 +65,7 @@ class DataManager:
 
     def _connect_db(self):
         """Stellt die Verbindung zur Datenbank her."""
-        self.conn = mysql.connector.connect(host=Config.DB_HOST, user=Config.DB_USER, password=Config.DB_PASS, database=Config.DB_NAME)
+        self.conn = mysql.connector.connect(host=Config.DB_HOST, user=Config.DB_USER, password=Config.DB_PASS, database=Config.DB_NAME, use_pure=True)
         self.cursor = self.conn.cursor(dictionary=True)
 
     # ----------- STREAMER-FUNKTIONEN -----------

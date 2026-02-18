@@ -4,7 +4,10 @@ def open_dashboard(session):
         from streamer_dashboard import StreamerDashboard
         app = StreamerDashboard(session=session)
         app.mainloop()
-        return
+        # Dashboard wurde erfolgreich gestartet und (irgendwann) wieder geschlossen.
+        # Wichtig: Wir geben True zurück, damit der Aufrufer (login.py) NICHT
+        # automatisch wieder ein Login-Fenster öffnet.
+        return True
 
     if session.is_moderator:
         import moderator_dashboard as md
@@ -20,14 +23,16 @@ def open_dashboard(session):
                     md.db.connClose()
                 except Exception:
                     pass
-        return
+            return True
+        return False
 
     if session.is_manager:
         from manager_gui import ManagerDashboard
         app = ManagerDashboard(session=session)
         app.mainloop()
-        return
+        return True
 
     # Fallback
     from tkinter import messagebox
     messagebox.showerror("Keine Rolle", "Dem Benutzer ist keine gültige Rolle zugewiesen.")
+    return False

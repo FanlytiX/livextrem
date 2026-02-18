@@ -4,3 +4,7 @@ livextrem/fremdsys/__pycache__
 livextrem/__pycache__
 livextrem/moderator_dashboard1.py
 livextrem/config_local.json
+build
+dist
+buildspecs
+.venv

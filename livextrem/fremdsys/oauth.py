@@ -56,6 +56,7 @@ def gen():
 
 def gen_direct():
     Config.validate()
+    auth_event.clear()
 
     """
     Direkte Anmeldung des Benutzers, ohne Prüfung, ob der Nutzer angemeldet ist.
@@ -71,58 +72,103 @@ def gen_direct():
             self.loginname = None
             self.displayname = None
 
-    # --- Server-Objekt später von außen erreichbar machen ---
+    # --- Server-Objekt (muss VOR Browser-Redirect existieren, sonst Race-Condition) ---
     server_instance = None
 
     class OAuthHandler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
             global token_info
 
-            if self.path.startswith("/favicon.ico"):
-                self.send_response(204)
-                self.end_headers()
-                return
+            # In einem kompilierten Build (z.B. PyInstaller) kann der Browser-Redirect
+            # extrem schnell passieren. Wenn der Handler crasht, zeigt Chrome
+            # "ERR_EMPTY_RESPONSE". Daher: defensive Fehlerbehandlung.
+            try:
 
-            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-            if "code" in params:
-                code = params["code"][0]
-                print("Authorization Code erhalten:", code)
+                # Keine Favicon-Requests behandeln
+                if self.path.startswith("/favicon.ico"):
+                    self.send_response(204)
+                    self.end_headers()
+                    return
 
-                token_url = "https://id.twitch.tv/oauth2/token"
-                data = {
-                    "client_id": CLIENT_ID,
-                    "client_secret": CLIENT_SECRET,
-                    "code": code,
-                    "grant_type": "authorization_code",
-                    "redirect_uri": REDIRECT_URI
-                }
+                # Query lesen
+                parsed = urllib.parse.urlparse(self.path)
+                params = urllib.parse.parse_qs(parsed.query)
 
-                r = requests.post(token_url, data=data)
-                token_info = r.json()
+                # 1) Fehler von Twitch (z.B. access_denied)
+                if "error" in params:
+                    err = params.get("error", ["unknown"])[0]
+                    desc = params.get("error_description", [""])[0]
+                    self.send_response(400)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(f"<h2>Login abgebrochen: {err}</h2><p>{desc}</p>".encode("utf-8"))
+                    auth_event.set()
+                    # self.server ist immer verfügbar, sobald der Handler läuft
+                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return
 
+                # 2) Normaler Callback mit Code
+                if "code" in params:
+                    code = params["code"][0]
+                    print("Authorization Code erhalten:", code)
+
+                    token_url = "https://id.twitch.tv/oauth2/token"
+                    data = {
+                        "client_id": CLIENT_ID,
+                        "client_secret": CLIENT_SECRET,
+                        "code": code,
+                        "grant_type": "authorization_code",
+                        "redirect_uri": REDIRECT_URI
+                    }
+
+                    r = requests.post(token_url, data=data)
+                    token_info = r.json()
+
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write("<h2>Login erfolgreich! Du kannst das Fenster schließen.</h2>".encode("utf-8"))
+
+                    auth_event.set()
+                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return
+
+                # 3) Alle anderen Requests (z.B. / ohne query) -> hilfreiche Seite
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write("<h2>Login erfolgreich! Du kannst das Fenster schließen.</h2>".encode("utf-8"))
+                self.wfile.write("<h3>Warte auf Twitch OAuth Callback...</h3><p>Bitte dieses Fenster offen lassen.</p>".encode("utf-8"))
+                return
 
-                auth_event.set()
+            except Exception as e:
+                # Immer eine Antwort liefern, sonst sieht der Nutzer im Browser nur ERR_EMPTY_RESPONSE.
+                try:
+                    self.send_response(500)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(
+                        ("<h2>OAuth Callback Fehler</h2>"
+                         "<p>Beim Verarbeiten des Redirects ist ein Fehler aufgetreten.</p>"
+                         f"<pre>{e!r}</pre>").encode("utf-8")
+                    )
+                finally:
+                    auth_event.set()
+                    # Falls der Server noch läuft, sauber beenden
+                    try:
+                        threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    except Exception:
+                        pass
+                return
 
-                # <<< Hier das saubere, garantierte Shutdown >>>
-                threading.Thread(target=server_instance.shutdown, daemon=True).start()
-
-            else:
-                self.send_response(400)
-                self.end_headers()
+        def log_message(self, format, *args):
+            # In GUI/pyinstaller builds nicht jeden Request ins stdout spammen.
+            return
 
     token = Adaten()
 
-    # Server starten
-    def start_server():
-        nonlocal server_instance
-        server_instance = http.server.HTTPServer(("localhost", 8080), OAuthHandler)
-        server_instance.serve_forever()
-
-    threading.Thread(target=start_server, daemon=True).start()
+    # Server starten (wichtig: Instanz SOFORT erstellen, damit keine Race-Condition entsteht)
+    server_instance = http.server.HTTPServer(("localhost", 8080), OAuthHandler)
+    threading.Thread(target=server_instance.serve_forever, daemon=True).start()
 
     # Liste → URL-kompatibler Scope-String
     scope_string = "+".join(SCOPES)
