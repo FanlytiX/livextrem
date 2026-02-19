@@ -124,3 +124,37 @@ def _extract_usernames(list): # Fertig
     return usernames
 
 # VOD: [{'id': '2607193563', 'title': 'Stream Together mit Tim 🎮🤝 | REPO + Chained Together', 'created_at': '2025-11-01T19:21:55Z', 'duration': '3h56m22s', 'views': 28, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/c6ed1943ca34bece2dd5_derflaavius_315023494631_1762024907//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2607193563', 'game_name': None}, {'id': '2602889239', 'title': 'Genesungsstream 🤒 | Ihr Entscheidet! 🎮', 'created_at': '2025-10-27T19:15:07Z', 'duration': '2h42m33s', 'views': 35, 'language': 'de', 'game_id': None, 'thumbnail_url': 'https://static-cdn.jtvnw.net/cf_vods/d3fi1amfgojobc/bc058d5aa3c07c15b8fe_derflaavius_314970933607_1761592501//thumb/thumb0-%{width}x%{height}.jpg', 'url': 'https://www.twitch.tv/videos/2602889239', 'game_name': None}]
+
+
+def follower_stats(token, days=7):
+    """Gibt Follower-Gesamtzahl und neue Follower im Zeitraum zurück."""
+    headers = header(token)
+    url = f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={token.userid}&first=100"
+    resp = requests.get(url, headers=headers).json()
+
+    if "data" not in resp:
+        raise Exception(f"Fehler beim Abruf der Follower: {resp}")
+
+    total = resp.get("total")
+    new_list = _lastfive(resp, days)
+    return {"total": total, "new_count": len(new_list), "new_usernames": new_list}
+
+
+def subscriber_total(token):
+    """Gibt die Gesamtzahl der Subs zurück (Scope: channel:read:subscriptions)."""
+    headers = header(token)
+    resp = requests.get(f"https://api.twitch.tv/helix/subscriptions?broadcaster_id={token.userid}&first=1", headers=headers).json()
+    if "data" not in resp:
+        # kann z.B. 401/403 sein → Twitch liefert dann oft 'message' etc.
+        raise Exception(f"Fehler beim Abruf der Subs: {resp}")
+    return resp.get("total")
+
+
+def avg_vod_views(token, limit=10):
+    """Durchschnittliche Aufrufe der letzten VODs (Archiv)."""
+    streams = laststreams(token, limit_per_page=min(100, max(1, int(limit))))
+    if not streams:
+        return 0
+    # laststreams liefert bereits dicts mit 'views'
+    views = [int(s.get("views", 0) or 0) for s in streams[:limit]]
+    return int(round(sum(views) / max(1, len(views))))

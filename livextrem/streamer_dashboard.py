@@ -7,10 +7,13 @@ import tkinter.messagebox as mb
 from tkinter import filedialog
 from pathlib import Path
 from datetime import datetime
+import json
+import threading
 from PIL import Image
 
 import mariadb
 from config import Config
+from fremdsys import tapi_data
 from security import hash_password
 # Kalender-Widget Import (muss installiert sein: pip install tkcalendar)
 try:
@@ -49,40 +52,9 @@ except:
     except:
         pass
 
-# ---------- MOCK DATEN ----------
-class MockData:
-    stats = {
-        "followers": 12450,
-        "new_followers_7d": 128,
-        "subscribers": 456,
-        "avg_viewers": 185
-    }
+# ---------- LOKALE DATEN (persistiert) ----------
 
-    todos = [
-        {"id": 1, "task": "Overlay Design überarbeiten", "done": False},
-        {"id": 2, "task": "Sponsor Email beantworten", "done": True},
-        {"id": 3, "task": "Discord Community Event planen", "done": False}
-    ]
 
-    finances = [
-        {"id": 1, "date": "2025-11-01 10:00", "desc": "Twitch Payout", "amount": 1250.00, "type": "Einnahme"},
-        {"id": 2, "date": "2025-11-03 14:30", "desc": "Neues Mikrofon", "amount": 149.99, "type": "Ausgabe"},
-        {"id": 3, "date": "2025-11-05 18:15", "desc": "Spende (Ko-fi)", "amount": 25.00, "type": "Einnahme"},
-        {"id": 4, "date": "2025-11-10 09:45", "desc": "Adobe Abo", "amount": 65.00, "type": "Ausgabe"},
-    ]
-
-    team = [
-        {"name": "ModMaster99", "role": "Moderator", "since": "2024-01-15 12:00"},
-        {"name": "ManagerLisa", "role": "Manager", "since": "2024-06-01 09:30"}
-    ]
-
-    planned_streams = [
-        {"id": 101, "title": "Just Chatting + React", "game": "Just Chatting", "date": "2025-11-22 18:00", "score": 85},
-        {"id": 102, "title": "Elden Ring DLC Hardcore", "game": "Elden Ring", "date": "2025-11-24 19:30", "score": 92},
-        {"id": 103, "title": "Retro Sunday", "game": "Mario 64", "date": "2023-01-01 12:00", "score": 40}, # Altes Datum zum Testen
-    ]
-
-# ---------- HELPER ----------
 def format_date_de(date_str):
     try:
         dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
@@ -90,25 +62,21 @@ def format_date_de(date_str):
     except ValueError:
         return date_str
 
-def get_next_stream():
+def get_next_stream(planned_streams):
     """Findet den chronologisch nächsten Stream in der Zukunft."""
     now = datetime.now()
     future_streams = []
-    
-    for s in MockData.planned_streams:
+
+    for s in planned_streams or []:
         try:
-            dt = datetime.strptime(s["date"], "%Y-%m-%d %H:%M")
+            dt = datetime.strptime(s.get("date", ""), "%Y-%m-%d %H:%M")
             if dt > now:
                 future_streams.append((dt, s))
-        except ValueError:
+        except Exception:
             continue
-            
-    # Sortieren nach Datum aufsteigend
+
     future_streams.sort(key=lambda x: x[0])
-    
-    if future_streams:
-        return future_streams[0][1] # Gib das Stream-Objekt zurück
-    return None
+    return future_streams[0][1] if future_streams else None
 
 # ---------- HAUPTKLASSE ----------
 class StreamerDashboard(ctk.CTk):
@@ -134,7 +102,107 @@ class StreamerDashboard(ctk.CTk):
 
         self._setup_sidebar()
         self._setup_content_area()
+
+        # Lokale (persistierte) Daten laden (ToDos, Finanzen, Streamplanung)
+        self._overview_stats_cache = None
+        self._overview_loading = False
+        self.todos = []
+        self.finances = []
+        self.planned_streams = []
+
+        # Remote/DB Daten laden (keine lokale Persistenz)
+        self._dashboard_loading = False
+        self._current_view = "Overview"
+        self._load_dashboard_data_async()
         self.show_view("Overview")
+
+
+
+
+    # ---------- DASHBOARD DATA (DB / REMOTE) ----------
+    def _api_token(self):
+        return getattr(self.session, "twitch_token", None) if self.session else None
+
+    def _next_id(self, items):
+        max_id = 0
+        for it in items or []:
+            try:
+                max_id = max(max_id, int(it.get("id", 0)))
+            except Exception:
+                pass
+        return max_id + 1
+
+    def _load_dashboard_data_async(self, force: bool = False):
+        """Lädt ToDos & Finanzen aus der DB (streamer-spezifisch).
+        Streamplanung wird streamer-spezifisch aus der DB geladen (keine lokale Persistenz).
+        """
+        if getattr(self, "_dashboard_loading", False) and not force:
+            return
+        self._dashboard_loading = True
+
+        def worker():
+            todos, finances, planned_streams = [], [], []
+            try:
+                self._ensure_dashboard_tables()
+                todos = self._db_load_todos()
+                finances = self._db_load_finances()
+
+                planned_streams = self._db_load_planned_streams()
+            except Exception as e:
+                print("Dashboard Data Fehler:", repr(e))
+            finally:
+                self.todos = todos or []
+                self.finances = finances or []
+                self.planned_streams = planned_streams or []
+                self._dashboard_loading = False
+                try:
+                    self.after(0, lambda: self.show_view(getattr(self, "_current_view", "Overview")))
+                except Exception:
+                    pass
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    # ---------- TWITCH / FREMDSYS ----------
+    def _load_overview_stats_async(self):
+        if self._overview_loading:
+            return
+        self._overview_loading = True
+
+        def worker():
+            try:
+                token = getattr(self.session, "twitch_token", None)
+                stats = self._fetch_overview_stats(token) if token else {}
+                self._overview_stats_cache = stats
+            except Exception as e:
+                print("Twitch Stats Fehler:", repr(e))
+                self._overview_stats_cache = {}
+            finally:
+                self._overview_loading = False
+                try:
+                    self.after(0, lambda: self.show_view("Overview"))
+                except Exception:
+                    pass
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _fetch_overview_stats(self, token):
+        stats = {}
+        try:
+            fstats = tapi_data.follower_stats(token, days=7)
+            stats["followers_total"] = fstats.get("total")
+            stats["new_followers_7d"] = fstats.get("new_count")
+        except Exception as e:
+            print("Follower Stats Fehler:", repr(e))
+        try:
+            stats["subs_total"] = tapi_data.subscriber_total(token)
+        except Exception as e:
+            print("Sub Stats Fehler:", repr(e))
+        try:
+            stats["avg_views_last_streams"] = tapi_data.avg_vod_views(token, limit=10)
+        except Exception as e:
+            print("VOD Avg Fehler:", repr(e))
+        return stats
+
 
     # --- SIDEBAR ---
     # ---------- DB HELPERS ----------
@@ -148,6 +216,358 @@ class StreamerDashboard(ctk.CTk):
             password=Config.DB_PASS,
             database=Config.DB_NAME
         )
+
+    def _ensure_dashboard_tables(self):
+        """Stellt sicher, dass die Streamer-spezifischen Tabellen existieren."""
+        if not self.streamer_id:
+            raise ValueError("Kein streamer_id in der Session gefunden.")
+        db = self._db()
+        try:
+            cur = db.cursor()
+            # ToDos
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS streamer_todos (
+                    todo_id INT AUTO_INCREMENT PRIMARY KEY,
+                    streamer_id INT NOT NULL,
+                    task VARCHAR(60) NOT NULL,
+                    done TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    INDEX idx_streamer_todos_streamer (streamer_id)
+                )"""
+            )
+            # Finanzen / EÜR
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS streamer_finances (
+                    finance_id INT AUTO_INCREMENT PRIMARY KEY,
+                    streamer_id INT NOT NULL,
+                    booking_date DATETIME NOT NULL,
+                    description VARCHAR(255) NOT NULL,
+                    amount DECIMAL(10,2) NOT NULL,
+                    entry_type VARCHAR(20) NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    INDEX idx_streamer_finances_streamer (streamer_id),
+                    INDEX idx_streamer_finances_date (booking_date)
+                )"""
+            )
+            # Content Planung (Content + Streamplanung)
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS content (
+                    content_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    titel VARCHAR(150) NOT NULL,
+                    beschreibung TEXT DEFAULT NULL,
+                    kategorie VARCHAR(50) DEFAULT NULL,
+                    plattform VARCHAR(50) DEFAULT NULL,
+                    erstellt_am DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"""
+            )
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS stream_planung (
+                    plan_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    streamer_id BIGINT UNSIGNED NOT NULL,
+                    content_id BIGINT UNSIGNED DEFAULT NULL,
+                    datum DATETIME NOT NULL,
+                    thema VARCHAR(200) DEFAULT NULL,
+                    status VARCHAR(20) DEFAULT 'geplant',
+                    INDEX idx_stream_planung_streamer (streamer_id),
+                    INDEX idx_stream_planung_datum (datum),
+                    INDEX idx_stream_planung_content (content_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"""
+            )
+
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # ---------- DB: TODOS ----------
+    def _db_load_todos(self):
+        db = self._db()
+        try:
+            cur = db.cursor(dictionary=True)
+            cur.execute(
+                """SELECT todo_id AS id, task, done
+                   FROM streamer_todos
+                  WHERE streamer_id = ?
+                  ORDER BY todo_id DESC""",
+                (int(self.streamer_id),)
+            )
+            rows = cur.fetchall() or []
+            return [
+                {"id": r["id"], "task": r["task"], "done": bool(r["done"])}
+                for r in rows
+            ]
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_insert_todo(self, task: str) -> int:
+        if not self.streamer_id:
+            raise ValueError("Kein streamer_id in der Session gefunden.")
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """INSERT INTO streamer_todos (streamer_id, task, done)
+                   VALUES (?, ?, 0)""",
+                (int(self.streamer_id), task[:60])
+            )
+            db.commit()
+            return int(cur.lastrowid)
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_update_todo_done(self, todo_id: int, done: int):
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """UPDATE streamer_todos
+                      SET done = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE todo_id = ? AND streamer_id = ?""",
+                (int(done), int(todo_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_update_todo_task(self, todo_id: int, task: str):
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """UPDATE streamer_todos
+                      SET task = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE todo_id = ? AND streamer_id = ?""",
+                (task[:60], int(todo_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_delete_todo(self, todo_id: int):
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """DELETE FROM streamer_todos
+                    WHERE todo_id = ? AND streamer_id = ?""",
+                (int(todo_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # ---------- DB: FINANCES ----------
+    def _db_load_finances(self):
+        db = self._db()
+        try:
+            cur = db.cursor(dictionary=True)
+            cur.execute(
+                """SELECT finance_id AS id,
+                          DATE_FORMAT(booking_date, '%Y-%m-%d %H:%i') AS date,
+                          description AS `desc`,
+                          amount,
+                          entry_type AS `type`
+                     FROM streamer_finances
+                    WHERE streamer_id = ?
+                    ORDER BY booking_date DESC, finance_id DESC""",
+                (int(self.streamer_id),)
+            )
+            rows = cur.fetchall() or []
+            out = []
+            for r in rows:
+                try:
+                    amt = float(r["amount"])
+                except Exception:
+                    amt = r["amount"]
+                out.append({
+                    "id": r["id"],
+                    "date": r["date"],
+                    "desc": r["desc"],
+                    "amount": amt,
+                    "type": r["type"],
+                })
+            return out
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_insert_finance(self, iso_date: str, desc: str, amount: float, entry_type: str) -> int:
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """INSERT INTO streamer_finances (streamer_id, booking_date, description, amount, entry_type)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (int(self.streamer_id), iso_date, desc[:255], float(amount), str(entry_type)[:20])
+            )
+            db.commit()
+            return int(cur.lastrowid)
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_update_finance(self, finance_id: int, iso_date: str, desc: str, amount: float, entry_type: str):
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """UPDATE streamer_finances
+                      SET booking_date = ?, description = ?, amount = ?, entry_type = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE finance_id = ? AND streamer_id = ?""",
+                (iso_date, desc[:255], float(amount), str(entry_type)[:20], int(finance_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_delete_finance(self, finance_id: int):
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """DELETE FROM streamer_finances
+                    WHERE finance_id = ? AND streamer_id = ?""",
+                (int(finance_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
+    # ---------- DB: CONTENT PLANNING ----------
+    def _db_load_planned_streams(self):
+        """Lädt Streamplanung streamer-spezifisch aus der DB."""
+        if not self.streamer_id:
+            return []
+        db = self._db()
+        try:
+            cur = db.cursor(dictionary=True)
+            cur.execute(
+                """SELECT sp.plan_id, sp.content_id, sp.datum, sp.thema, sp.status,
+                          c.titel AS content_title, c.kategorie AS content_game
+                     FROM stream_planung sp
+                LEFT JOIN content c ON c.content_id = sp.content_id
+                    WHERE sp.streamer_id = ?
+                 ORDER BY sp.datum ASC""",
+                (int(self.streamer_id),)
+            )
+            rows = cur.fetchall() or []
+            out = []
+            for r in rows:
+                dt = r.get("datum")
+                if hasattr(dt, "strftime"):
+                    iso_date = dt.strftime("%Y-%m-%d %H:%M")
+                else:
+                    # Fallback: already string?
+                    iso_date = str(dt)[:16]
+                out.append({
+                    "id": int(r["plan_id"]),
+                    "content_id": int(r["content_id"]) if r.get("content_id") is not None else None,
+                    "title": (r.get("content_title") or r.get("thema") or "").strip(),
+                    "game": (r.get("content_game") or "").strip(),
+                    "date": iso_date,
+                    "status": (r.get("status") or "geplant")
+                })
+            return out
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_create_planned_stream(self, title: str, game: str, iso_date: str) -> int:
+        """Erstellt Content + Streamplanung (streamer-spezifisch). Gibt plan_id zurück."""
+        if not self.streamer_id:
+            raise ValueError("Kein streamer_id in der Session gefunden.")
+        db = self._db()
+        try:
+            cur = db.cursor()
+            # Content-Datensatz anlegen (global, aber Zugriff erfolgt nur über stream_planung + streamer_id)
+            cur.execute(
+                """INSERT INTO content (titel, beschreibung, kategorie, plattform)
+                   VALUES (?, NULL, ?, 'Twitch')""",
+                (title[:150], (game or None))
+            )
+            content_id = cur.lastrowid
+            cur.execute(
+                """INSERT INTO stream_planung (streamer_id, content_id, datum, thema, status)
+                   VALUES (?, ?, ?, ?, 'geplant')""",
+                (int(self.streamer_id), int(content_id), iso_date, title[:200])
+            )
+            plan_id = cur.lastrowid
+            db.commit()
+            return int(plan_id)
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    def _db_update_planned_stream(self, plan_id: int, content_id, title: str, game: str, iso_date: str):
+        """Aktualisiert Streamplanung + Content."""
+        if not self.streamer_id:
+            raise ValueError("Kein streamer_id in der Session gefunden.")
+        db = self._db()
+        try:
+            cur = db.cursor()
+            # Content aktualisieren / neu anlegen falls fehlt
+            if content_id:
+                cur.execute(
+                    """UPDATE content
+                          SET titel = ?, kategorie = ?
+                        WHERE content_id = ?""",
+                    (title[:150], (game or None), int(content_id))
+                )
+                new_content_id = int(content_id)
+            else:
+                cur.execute(
+                    """INSERT INTO content (titel, beschreibung, kategorie, plattform)
+                       VALUES (?, NULL, ?, 'Twitch')""",
+                    (title[:150], (game or None))
+                )
+                new_content_id = int(cur.lastrowid)
+
+            cur.execute(
+                """UPDATE stream_planung
+                      SET datum = ?, thema = ?, content_id = ?
+                    WHERE plan_id = ? AND streamer_id = ?""",
+                (iso_date, title[:200], new_content_id, int(plan_id), int(self.streamer_id))
+            )
+            db.commit()
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
 
     def _load_team_from_db(self):
         """Lädt Moderator/Manager Nutzer aus der DB."""
@@ -307,6 +727,7 @@ class StreamerDashboard(ctk.CTk):
         self.content_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
 
     def show_view(self, view_name):
+        self._current_view = view_name
         self.focus() # Prevent Widget Focus Error
         
         # Frame leeren
@@ -327,16 +748,39 @@ class StreamerDashboard(ctk.CTk):
         elif view_name == "Team": self._view_team()
 
     # --- VIEW: OVERVIEW ---
+    
     def _view_overview(self):
         self._add_title("Dashboard Übersicht")
+
+        # ---------- Twitch Stats (asynchron laden) ----------
+        stats = self._overview_stats_cache or {}
+
+        followers_total = stats.get("followers_total")
+        new_followers = stats.get("new_followers_7d")
+        subs_total = stats.get("subs_total")
+        avg_views = stats.get("avg_views_last_streams")
+
+        # Fallback / Loading-Anzeigen
+        followers_val = str(followers_total) if followers_total is not None else "..."
+        followers_sub = f"+{new_followers} diese Woche" if isinstance(new_followers, int) else "lädt…"
+
+        subs_val = str(subs_total) if subs_total is not None else "…"
+        subs_sub = "Twitch" if subs_total is not None else "lädt…"
+
+        avg_val = str(avg_views) if avg_views is not None else "…"
+        avg_sub = "Ø Aufrufe (VODs)" if avg_views is not None else "lädt…"
 
         stats_grid = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         stats_grid.pack(fill="x", pady=10)
         stats_grid.columnconfigure((0,1,2), weight=1)
 
-        self._create_stat_card(stats_grid, 0, "Aktuelle Follower", str(MockData.stats["followers"]), "+12 diese Woche", COLOR_PRIMARY)
-        self._create_stat_card(stats_grid, 1, "Subscriber", str(MockData.stats["subscribers"]), "Level 2 Hype Train", "#D2601A")
-        self._create_stat_card(stats_grid, 2, "Ø Zuschauer", str(MockData.stats["avg_viewers"]), "Stabil", COLOR_SUCCESS)
+        self._create_stat_card(stats_grid, 0, "Aktuelle Follower", followers_val, followers_sub, COLOR_PRIMARY)
+        self._create_stat_card(stats_grid, 1, "Subscriber", subs_val, subs_sub, "#D2601A")
+        self._create_stat_card(stats_grid, 2, "Ø Aufrufe", avg_val, avg_sub, COLOR_SUCCESS)
+
+        # Falls noch nicht geladen: im Hintergrund laden und danach View neu rendern
+        if self._overview_stats_cache is None and self.session and getattr(self.session, "twitch_token", None):
+            self._load_overview_stats_async()
 
         bottom_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         bottom_frame.pack(fill="both", expand=True, pady=20)
@@ -346,12 +790,12 @@ class StreamerDashboard(ctk.CTk):
         # ToDo Liste
         todo_frame = ctk.CTkFrame(bottom_frame, fg_color=COLOR_CARD)
         todo_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        
+
         ctk.CTkLabel(todo_frame, text="✅ Meine To-Do Liste", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=15, padx=15, anchor="w")
-        
+
         input_frame = ctk.CTkFrame(todo_frame, fg_color="transparent")
         input_frame.pack(fill="x", padx=15, pady=(0,10))
-        
+
         self.todo_var = ctk.StringVar()
         def limit_char(*args):
             val = self.todo_var.get()
@@ -366,30 +810,32 @@ class StreamerDashboard(ctk.CTk):
         self.todo_list_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         self._refresh_todo_list()
 
-        # Nächster Stream Info
+        # Nächster Stream Info (aus lokaler Planung)
         next_frame = ctk.CTkFrame(bottom_frame, fg_color=COLOR_CARD)
         next_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
-        
+
         ctk.CTkLabel(next_frame, text="🚀 Nächster Stream", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=15, padx=15, anchor="w")
-        
-        # LOGIK ÄNDERUNG: Nächsten Stream aus Zukunft holen
-        nxt = get_next_stream()
-        
+
+        nxt = get_next_stream(self.planned_streams)
+
         if nxt:
-            de_date = format_date_de(nxt["date"])
-            date_part = de_date.split(" ")[0]
+            de_date = format_date_de(nxt.get("date", ""))
+            date_part = de_date.split(" ")[0] if de_date else ""
             time_part = de_date.split(" ")[1] if " " in de_date else ""
 
-            ctk.CTkLabel(next_frame, text=f"{date_part}\n{time_part} Uhr", font=ctk.CTkFont(size=32, weight="bold"), text_color=COLOR_PRIMARY[1]).pack(pady=(20, 5))
-            ctk.CTkLabel(next_frame, text=nxt["title"], font=ctk.CTkFont(size=22)).pack(pady=5)
-            ctk.CTkLabel(next_frame, text=f"Game: {nxt['game']}", font=ctk.CTkFont(size=16, slant="italic")).pack(pady=5)
-            
-            score_color = COLOR_SUCCESS if nxt["score"] > 80 else "#D2601A"
-            ctk.CTkLabel(next_frame, text=f"📈 KI-Potenzial Score: {nxt['score']}/100", text_color=score_color, font=ctk.CTkFont(weight="bold")).pack(pady=20)
+            ctk.CTkLabel(next_frame, text=f"{date_part} {time_part} Uhr", font=ctk.CTkFont(size=32, weight="bold"), text_color=COLOR_PRIMARY[1]).pack(pady=(20, 5))
+            ctk.CTkLabel(next_frame, text=nxt.get("title", ""), font=ctk.CTkFont(size=22)).pack(pady=5)
+            ctk.CTkLabel(next_frame, text=f"Game: {nxt.get('game','')}", font=ctk.CTkFont(size=16, slant="italic")).pack(pady=5)
+
+            score = nxt.get("score")
+            if isinstance(score, int):
+                score_color = COLOR_SUCCESS if score > 80 else "#D2601A"
+                ctk.CTkLabel(next_frame, text=f"📈 KI-Potenzial Score: {score}/100", text_color=score_color, font=ctk.CTkFont(weight="bold")).pack(pady=20)
         else:
-            ctk.CTkLabel(next_frame, text="Keine zukünftigen\nStreams geplant.", font=ctk.CTkFont(size=20), text_color="gray").pack(pady=50)
+            ctk.CTkLabel(next_frame, text="Keine zukünftigen Streams geplant.", font=ctk.CTkFont(size=20), text_color="gray").pack(pady=50)
 
     # --- VIEW: CONTENT PLANNING ---
+
     def _view_content(self):
         self._add_title("Content & Stream Planung")
         
@@ -435,8 +881,8 @@ class StreamerDashboard(ctk.CTk):
         top_grid.pack(fill="x", pady=10)
         top_grid.columnconfigure((0,1,2), weight=1)
 
-        income = sum(x["amount"] for x in MockData.finances if x["type"] == "Einnahme")
-        expenses = sum(x["amount"] for x in MockData.finances if x["type"] == "Ausgabe")
+        income = sum(x["amount"] for x in self.finances if x["type"] == "Einnahme")
+        expenses = sum(x["amount"] for x in self.finances if x["type"] == "Ausgabe")
         profit = income - expenses
 
         self._create_stat_card(top_grid, 0, "Gesamteinnahmen", f"{income:.2f} €", "Dieser Monat", COLOR_SUCCESS)
@@ -498,7 +944,7 @@ class StreamerDashboard(ctk.CTk):
     def _refresh_todo_list(self):
         for w in self.todo_list_scroll.winfo_children(): w.destroy()
         
-        for item in MockData.todos:
+        for item in self.todos:
             row = ctk.CTkFrame(self.todo_list_scroll, fg_color="transparent")
             row.pack(fill="x", pady=2)
             
@@ -521,7 +967,7 @@ class StreamerDashboard(ctk.CTk):
         for w in self.scroll_plan.winfo_children(): w.destroy()
         
         # Sortierte Anzeige (nur für die Liste, Originaldaten bleiben)
-        sorted_streams = sorted(MockData.planned_streams, key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d %H:%M"))
+        sorted_streams = sorted(self.planned_streams, key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d %H:%M"))
 
         for stream in sorted_streams:
             card = ctk.CTkFrame(self.scroll_plan, fg_color="gray80" if ctk.get_appearance_mode()=="Light" else "gray20")
@@ -548,7 +994,7 @@ class StreamerDashboard(ctk.CTk):
         ctk.CTkFrame(self.scroll_fin, height=2, fg_color="gray50").pack(fill="x", pady=5)
 
         # Sortiere Finanzen nach Datum absteigend (neueste oben)
-        sorted_fin = sorted(MockData.finances, key=lambda x: x["date"], reverse=True)
+        sorted_fin = sorted(self.finances, key=lambda x: x["date"], reverse=True)
 
         for entry in sorted_fin:
             row = ctk.CTkFrame(self.scroll_fin, fg_color="transparent")
@@ -633,21 +1079,35 @@ class StreamerDashboard(ctk.CTk):
             ).pack(side="left")
 
     def _toggle_todo(self, item, var):
-        item["done"] = var.get()
+        """Setzt done-Status und speichert in DB (streamer-spezifisch)."""
+        item["done"] = bool(var.get())
+        try:
+            self._db_update_todo_done(int(item["id"]), 1 if item["done"] else 0)
+        except Exception as e:
+            print("ToDo DB-Update Fehler:", repr(e))
+            mb.showerror("DB Fehler", f"ToDo konnte nicht gespeichert werden:\n{e}")
         self._refresh_todo_list()
-
     def _add_todo(self):
-        txt = self.todo_var.get()
-        if txt:
-            MockData.todos.append({"id": len(MockData.todos)+1, "task": txt, "done": False})
+        txt = (self.todo_var.get() or "").strip()
+        if not txt:
+            return
+        try:
+            todo_id = self._db_insert_todo(txt)
+            self.todos.append({"id": todo_id, "task": txt, "done": False})
             self.todo_var.set("")
             self._refresh_todo_list()
-
+        except Exception as e:
+            print("ToDo DB-Insert Fehler:", repr(e))
+            mb.showerror("DB Fehler", f"ToDo konnte nicht gespeichert werden:\n{e}")
     def _delete_todo(self, item):
-        if item in MockData.todos:
-            MockData.todos.remove(item)
-            self._refresh_todo_list()
-
+        try:
+            self._db_delete_todo(int(item["id"]))
+        except Exception as e:
+            print("ToDo DB-Delete Fehler:", repr(e))
+            mb.showerror("DB Fehler", f"ToDo konnte nicht gelöscht werden:\n{e}")
+        if item in self.todos:
+            self.todos.remove(item)
+        self._refresh_todo_list()
     def _send_ai_message(self):
         msg = self.ai_entry.get()
         if msg:
@@ -659,11 +1119,15 @@ class StreamerDashboard(ctk.CTk):
             self.ai_entry.delete(0, "end")
 
     def _delete_finance(self, entry):
-        if entry in MockData.finances:
-            MockData.finances.remove(entry)
-            self.show_view("Finance") # Refresh mit Clean
+        try:
+            self._db_delete_finance(int(entry["id"]))
+        except Exception as e:
+            print("Finance DB-Delete Fehler:", repr(e))
+            mb.showerror("DB Fehler", f"Buchung konnte nicht gelöscht werden:\n{e}")
 
-
+        if entry in self.finances:
+            self.finances.remove(entry)
+        self.show_view("Finance")  # Refresh
     def _delete_team_member(self, user):
         if not user or not user.get("user_id"):
             return
@@ -838,22 +1302,31 @@ class StreamerDashboard(ctk.CTk):
         d.title("ToDo Bearbeiten")
         d.transient(self)
         d.grab_set()
-        
-        var = ctk.StringVar(value=item["task"])
+
+        var = ctk.StringVar(value=item.get("task", ""))
         def limit(*args):
-             if len(var.get()) > 60: var.set(var.get()[:60])
+            if len(var.get()) > 60:
+                var.set(var.get()[:60])
         var.trace_add("write", limit)
-        
+
         entry = ctk.CTkEntry(d, textvariable=var)
         entry.pack(pady=20, padx=20, fill="x")
-        
-        def save():
-            item["task"] = var.get()
-            self._refresh_todo_list()
-            d.destroy()
-            
-        ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack()
 
+        def save():
+            new_task = (var.get() or "").strip()
+            if not new_task:
+                mb.showwarning("Hinweis", "Aufgabe darf nicht leer sein.")
+                return
+            try:
+                self._db_update_todo_task(int(item["id"]), new_task)
+                item["task"] = new_task
+                self._refresh_todo_list()
+                d.destroy()
+            except Exception as e:
+                print("ToDo DB-Update Fehler:", repr(e))
+                mb.showerror("DB Fehler", f"ToDo konnte nicht gespeichert werden:\n{e}")
+
+        ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack()
     def _content_popup(self, stream_data):
         d = ctk.CTkToplevel(self)
         title = "Neuen Stream planen" if stream_data is None else "Stream bearbeiten"
@@ -927,19 +1400,39 @@ class StreamerDashboard(ctk.CTk):
                 dt = datetime.strptime(f"{d_str} {t_str}", "%d.%m.%Y %H:%M")
                 iso_date = dt.strftime("%Y-%m-%d %H:%M")
                 
-                if stream_data:
-                    stream_data["title"] = e_title.get()
-                    stream_data["game"] = e_game.get()
-                    stream_data["date"] = iso_date
-                else:
-                    MockData.planned_streams.append({
-                        "id": len(MockData.planned_streams)+100,
-                        "title": e_title.get(),
-                        "game": e_game.get(),
-                        "date": iso_date,
-                        "score": 50 
-                    })
-                self._refresh_content_list()
+                title_val = (e_title.get() or "").strip()
+                game_val = (e_game.get() or "").strip()
+
+                def worker():
+                    try:
+                        self._ensure_dashboard_tables()
+                        if stream_data:
+                            self._db_update_planned_stream(
+                                plan_id=int(stream_data.get("id")),
+                                content_id=stream_data.get("content_id"),
+                                title=title_val,
+                                game=game_val,
+                                iso_date=iso_date
+                            )
+                        else:
+                            self._db_create_planned_stream(
+                                title=title_val,
+                                game=game_val,
+                                iso_date=iso_date
+                            )
+                        self.planned_streams = self._db_load_planned_streams()
+                        try:
+                            self.after(0, self._refresh_content_list)
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        print("Content Planung DB Fehler:", repr(e))
+                        try:
+                            self.after(0, lambda: mb.showerror("Fehler", f"Speichern fehlgeschlagen: {e}"))
+                        except Exception:
+                            pass
+
+                threading.Thread(target=worker, daemon=True).start()
                 d.destroy()
             except ValueError:
                 mb.showerror("Fehler", "Ungültiges Datum.")
@@ -953,27 +1446,30 @@ class StreamerDashboard(ctk.CTk):
         d.geometry("400x450")
         d.transient(self)
         d.grab_set()
-        
+
         ctk.CTkLabel(d, text=t_text, font=ctk.CTkFont(size=18, weight="bold")).pack(pady=20)
-        
+
         ctk.CTkLabel(d, text="Beschreibung").pack(anchor="w", padx=20)
         desc = ctk.CTkEntry(d)
         desc.pack(pady=(0,10), padx=20, fill="x")
-        
+
         ctk.CTkLabel(d, text="Betrag (mit Komma)").pack(anchor="w", padx=20)
         amount = ctk.CTkEntry(d)
         amount.pack(pady=(0,10), padx=20, fill="x")
-        
+
         ctk.CTkLabel(d, text="Typ").pack(anchor="w", padx=20)
         ftype = ctk.CTkComboBox(d, values=["Einnahme", "Ausgabe"], state="readonly")
         ftype.pack(pady=(0,10), padx=20, fill="x")
         ftype.set("Ausgabe")
 
         ctk.CTkLabel(d, text="Datum").pack(anchor="w", padx=20)
-        
+
         if HAS_CALENDAR:
-            cal = DateEntry(d, width=12, background=COLOR_PRIMARY[0],
-                            foreground='white', borderwidth=2, locale='de_DE', date_pattern='dd.mm.yyyy')
+            cal = DateEntry(
+                d, width=12, background=COLOR_PRIMARY[0],
+                foreground="white", borderwidth=2, locale="de_DE",
+                date_pattern="dd.mm.yyyy"
+            )
             cal.pack(pady=(0,10), padx=20, anchor="w")
         else:
             cal = ctk.CTkEntry(d)
@@ -981,65 +1477,77 @@ class StreamerDashboard(ctk.CTk):
             cal.insert(0, datetime.now().strftime("%d.%m.%Y"))
 
         if entry_data:
-            desc.insert(0, entry_data["desc"])
-            amount.insert(0, str(entry_data["amount"]).replace(".", ","))
-            ftype.set(entry_data["type"])
-            if HAS_CALENDAR:
-                dt_obj = datetime.strptime(entry_data["date"].split(" ")[0], "%Y-%m-%d")
-                cal.set_date(dt_obj)
-            else:
-                cal.delete(0, "end")
-                cal.insert(0, format_date_de(entry_data["date"]).split(" ")[0])
+            desc.insert(0, entry_data.get("desc", ""))
+            amount.insert(0, str(entry_data.get("amount", "")).replace(".", ","))
+            ftype.set(entry_data.get("type", "Ausgabe"))
+            try:
+                if HAS_CALENDAR:
+                    dt_obj = datetime.strptime(entry_data["date"].split(" ")[0], "%Y-%m-%d")
+                    cal.set_date(dt_obj)
+                else:
+                    cal.delete(0, "end")
+                    cal.insert(0, format_date_de(entry_data["date"]).split(" ")[0])
+            except Exception:
+                pass
 
         def save():
-            txt = desc.get()
-            amt_str = amount.get()
-            
-            # AUTOMATIC ,00 FIX
+            txt = (desc.get() or "").strip()
+            amt_str = (amount.get() or "").strip()
+
+            # Automatic ,00 fix
             if amt_str and "," not in amt_str and "." not in amt_str:
                 amt_str += ",00"
 
             if not txt or not amt_str:
                 mb.showerror("Fehler", "Bitte Text UND Betrag eingeben.")
                 return
-            
+
             try:
                 real_amt = float(amt_str.replace(",", "."))
-                
+
                 if HAS_CALENDAR:
                     d_obj = cal.get_date()
-                    iso_date = d_obj.strftime("%Y-%m-%d 12:00") # Default Time
+                    iso_date = d_obj.strftime("%Y-%m-%d 12:00")  # Default Time
                 else:
                     try:
                         dt = datetime.strptime(cal.get(), "%d.%m.%Y")
                         iso_date = dt.strftime("%Y-%m-%d 12:00")
                     except ValueError:
-                         mb.showerror("Fehler", "Datum muss DD.MM.YYYY sein.")
-                         return
+                        mb.showerror("Fehler", "Datum muss DD.MM.YYYY sein.")
+                        return
 
                 if entry_data:
+                    # Update DB + local list
+                    self._db_update_finance(
+                        int(entry_data["id"]),
+                        iso_date,
+                        txt,
+                        real_amt,
+                        ftype.get()
+                    )
                     entry_data["desc"] = txt
                     entry_data["amount"] = real_amt
                     entry_data["type"] = ftype.get()
                     entry_data["date"] = iso_date
                 else:
-                    MockData.finances.append({
-                        "id": 999, 
-                        "date": iso_date, 
-                        "desc": txt, 
-                        "amount": real_amt, 
+                    entry_id = self._db_insert_finance(iso_date, txt, real_amt, ftype.get())
+                    self.finances.append({
+                        "id": entry_id,
+                        "date": iso_date,
+                        "desc": txt,
+                        "amount": real_amt,
                         "type": ftype.get()
                     })
-                
-                # BUG FIX: Hier wichtig show_view aufrufen, um das Content Frame zu clearen!
+
                 self.show_view("Finance")
                 d.destroy()
             except ValueError:
                 mb.showerror("Fehler", "Ungültiger Betrag (Format: 00,00)")
+            except Exception as e:
+                print("Finance DB Fehler:", repr(e))
+                mb.showerror("DB Fehler", f"Buchung konnte nicht gespeichert werden:\n{e}")
 
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
-
-
     def _role_popup(self, user_data=None):
         d = ctk.CTkToplevel(self)
         is_edit = bool(user_data)
@@ -1141,7 +1649,7 @@ class StreamerDashboard(ctk.CTk):
                 with open(filename, mode='w', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f, delimiter=';')
                     writer.writerow(["Datum", "Beschreibung", "Typ", "Betrag"])
-                    for row in MockData.finances:
+                    for row in self.finances:
                          writer.writerow([
                              format_date_de(row["date"]),
                              row["desc"],
@@ -1176,7 +1684,7 @@ class StreamerDashboard(ctk.CTk):
                 c.line(50, y+15, 550, y+15)
 
                 total = 0
-                for row in MockData.finances:
+                for row in self.finances:
                     if y < 50:
                         c.showPage()
                         y = 800
