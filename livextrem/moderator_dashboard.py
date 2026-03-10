@@ -71,6 +71,12 @@ def init_database():
             broadcaster_id = None
 
         mod_queries = ModeratorQueries(db, twitch_token, broadcaster_id=broadcaster_id)
+
+        try:
+            if session:
+                mod_name_label.configure(text=getattr(session, "display_name", None) or getattr(session, "username", "..."))
+        except Exception:
+            pass
         
         mb.showinfo("Chat laden", "Lade Chat-Nachrichten vom letzten VOD...\nDies kann einen Moment dauern.")
         success = mod_queries.load_vod_chat()
@@ -143,7 +149,7 @@ else:
 mod_info_frame = ctk.CTkFrame(sidebar, fg_color="#CA6931", corner_radius=8)
 mod_info_frame.pack(pady=(0, 20), padx=10, fill="x")
 
-mod_info_label = ctk.CTkLabel(mod_info_frame, text="👤 Moderator", font=("Arial", 17, "bold"))
+mod_info_label = ctk.CTkLabel(mod_info_frame, text="👤 Moderationskontext", font=("Arial", 17, "bold"))
 mod_info_label.pack(pady=(8, 2))
 
 mod_name_label = ctk.CTkLabel(mod_info_frame, text="...", font=("Arial", 19))

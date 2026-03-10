@@ -681,7 +681,7 @@ class StreamerDashboard(ctk.CTk):
     def _setup_sidebar(self):
         self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_rowconfigure(6, weight=1)
+        self.sidebar.grid_rowconfigure(8, weight=1)
 
         if IMG_PATH.exists():
             try:
@@ -718,8 +718,54 @@ class StreamerDashboard(ctk.CTk):
             btn.grid(row=i+2, column=0, padx=10, pady=5, sticky="ew")
             self.nav_buttons[view_name] = btn
 
+        self.btn_open_moderator = ctk.CTkButton(
+            self.sidebar,
+            text="🛡️ Moderator Dashboard",
+            command=self._switch_to_moderator_dashboard,
+            fg_color="transparent",
+            text_color=COLOR_TEXT,
+            hover_color=COLOR_CARD,
+            anchor="w",
+            height=40,
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.btn_open_moderator.grid(row=6, column=0, padx=10, pady=(15, 5), sticky="ew")
+
+        self.btn_open_manager = ctk.CTkButton(
+            self.sidebar,
+            text="🗂️ Manager Dashboard",
+            command=self._switch_to_manager_dashboard,
+            fg_color="transparent",
+            text_color=COLOR_TEXT,
+            hover_color=COLOR_CARD,
+            anchor="w",
+            height=40,
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.btn_open_manager.grid(row=7, column=0, padx=10, pady=5, sticky="ew")
+
         self.btn_theme = ctk.CTkButton(self.sidebar, text="🌙 Modus wechseln", command=self._toggle_theme, fg_color=COLOR_PRIMARY)
-        self.btn_theme.grid(row=7, column=0, padx=20, pady=20, sticky="ew")
+        self.btn_theme.grid(row=9, column=0, padx=20, pady=20, sticky="ew")
+
+    def _switch_dashboard(self, target_dashboard: str):
+        from router import open_dashboard
+
+        if not self.session:
+            mb.showerror("Dashboard-Wechsel", "Keine aktive Session gefunden.")
+            return
+
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
+        open_dashboard(self.session, target=target_dashboard)
+
+    def _switch_to_moderator_dashboard(self):
+        self._switch_dashboard("moderator")
+
+    def _switch_to_manager_dashboard(self):
+        self._switch_dashboard("manager")
 
     # --- CONTENT MANAGER ---
     def _setup_content_area(self):

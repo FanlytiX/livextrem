@@ -55,10 +55,12 @@ class DataManager:
     Nutzt Tabellen:
       - streamer
       - stream_planung
+      - streamer_manager
     """
 
-    def __init__(self, data_file, manager_user_id=None):
-        self.manager_user_id = manager_user_id
+    def __init__(self, data_file, manager_user_id=None, context_streamer_id=None):
+        self.manager_user_id = int(manager_user_id) if manager_user_id else None
+        self.context_streamer_id = int(context_streamer_id) if context_streamer_id else None
         # data_file bleibt nur wegen der Signatur, wird nicht genutzt.
         self.data_file = data_file
         self._connect_db()
@@ -68,9 +70,104 @@ class DataManager:
         self.conn = mysql.connector.connect(host=Config.DB_HOST, user=Config.DB_USER, password=Config.DB_PASS, database=Config.DB_NAME, use_pure=True)
         self.cursor = self.conn.cursor(dictionary=True)
 
+    # ----------- BERECHTIGUNGS-/ZUORDNUNGS-HILFEN -----------
+
+    def _is_manager_bound(self):
+        return self.manager_user_id is not None or self.context_streamer_id is not None
+
+    def get_managed_streamer_ids(self):
+        if self.context_streamer_id is not None:
+            return [self.context_streamer_id]
+        if not self._is_manager_bound():
+            return []
+        self.cursor.execute(
+            "SELECT streamer_id FROM streamer_manager WHERE user_id = %s",
+            (self.manager_user_id,)
+        )
+        return [int(row["streamer_id"]) for row in self.cursor.fetchall() if row.get("streamer_id") is not None]
+
+    def manager_has_streamer_access(self, streamer_id):
+        if self.context_streamer_id is not None:
+            return int(streamer_id) == int(self.context_streamer_id)
+        if not self._is_manager_bound():
+            return True
+        self.cursor.execute(
+            "SELECT 1 FROM streamer_manager WHERE user_id = %s AND streamer_id = %s LIMIT 1",
+            (self.manager_user_id, int(streamer_id))
+        )
+        return self.cursor.fetchone() is not None
+
+    def manager_has_event_access(self, event_id):
+        if self.context_streamer_id is not None:
+            self.cursor.execute(
+                "SELECT 1 FROM stream_planung WHERE plan_id = %s AND streamer_id = %s LIMIT 1",
+                (int(event_id), self.context_streamer_id)
+            )
+            return self.cursor.fetchone() is not None
+        if not self._is_manager_bound():
+            return True
+        self.cursor.execute(
+            """
+            SELECT 1
+            FROM stream_planung sp
+            JOIN streamer_manager smg ON smg.streamer_id = sp.streamer_id
+            WHERE sp.plan_id = %s
+              AND smg.user_id = %s
+            LIMIT 1
+            """,
+            (int(event_id), self.manager_user_id)
+        )
+        return self.cursor.fetchone() is not None
+
+    def _ensure_streamer_mapping(self, streamer_id):
+        if self.context_streamer_id is not None:
+            return
+        if not self._is_manager_bound():
+            return
+        self.cursor.execute(
+            "SELECT 1 FROM streamer_manager WHERE streamer_id = %s AND user_id = %s LIMIT 1",
+            (int(streamer_id), self.manager_user_id)
+        )
+        if not self.cursor.fetchone():
+            self.cursor.execute(
+                "INSERT INTO streamer_manager (streamer_id, user_id) VALUES (%s, %s)",
+                (int(streamer_id), self.manager_user_id)
+            )
+
+    def get_protected_streamer_ids(self):
+        """Streamer, die im aktuellen Kontext niemals archiviert werden dürfen."""
+        if self.context_streamer_id is not None:
+            return {int(self.context_streamer_id)}
+        managed_ids = self.get_managed_streamer_ids()
+        return {int(streamer_id) for streamer_id in managed_ids}
+
+    def is_protected_streamer(self, streamer_id):
+        try:
+            return int(streamer_id) in self.get_protected_streamer_ids()
+        except Exception:
+            return False
+
+    def can_archive_streamer(self, streamer_id):
+        return self.manager_has_streamer_access(streamer_id) and not self.is_protected_streamer(streamer_id)
+
     # ----------- STREAMER-FUNKTIONEN -----------
 
     def get_all_streamers(self):
+        # Für Streamer-im-Manager-Kontext: nur den eigenen Streamer laden
+        if self.context_streamer_id is not None:
+            self.cursor.execute("""
+            SELECT 
+                streamer_id AS id,
+                name,
+                COALESCE(status, 'Aktiv') AS status,
+                COALESCE(farbe, '#34C759') AS color_hex
+            FROM streamer
+            WHERE streamer_id = %s
+              AND status <> 'Archiviert'
+            ORDER BY name
+            """, (self.context_streamer_id,))
+            return self.cursor.fetchall()
+
         # Für Manager: nur zugeordnete Streamer laden
         if self.manager_user_id:
             self.cursor.execute("""
@@ -104,18 +201,25 @@ class DataManager:
 
 
     def add_streamer(self, name, status='Aktiv', color='#34C759'):
-        """Neuen Streamer in der DB anlegen."""
+        """Neuen Streamer in der DB anlegen und bei Managern direkt zuordnen."""
         self.cursor.execute("""
             INSERT INTO streamer (name, plattform, email, status, farbe)
             VALUES (%s, %s, %s, %s, %s)
         """, (name, '', '', status, color))
-        self.conn.commit()
 
         new_id = self.cursor.lastrowid
+        self._ensure_streamer_mapping(new_id)
+        self.conn.commit()
+
         return {'id': new_id, 'name': name, 'status': status, 'color': color}
 
     def update_streamer(self, streamer_id, name, status, color):
         """Streamer in der DB aktualisieren."""
+        if not self.manager_has_streamer_access(streamer_id):
+            return False
+        if status == 'Archiviert' and self.is_protected_streamer(streamer_id):
+            raise PermissionError("Der verantwortliche Streamer darf in diesem Kontext nicht archiviert werden.")
+
         self.cursor.execute("""
             UPDATE streamer
             SET name = %s,
@@ -128,6 +232,9 @@ class DataManager:
 
     def delete_streamer(self, streamer_id):
         """Streamer NICHT löschen, sondern als 'Archiviert' markieren."""
+        if not self.can_archive_streamer(streamer_id):
+            return False
+
         self.cursor.execute("""
             UPDATE streamer
             SET status = 'Archiviert'
@@ -140,6 +247,9 @@ class DataManager:
     # ------------ EVENT-FUNKTIONEN (stream_planung) ------------
 
     def add_event(self, date_key, title, streamer_id, streamer_name):
+        if not self.manager_has_streamer_access(streamer_id):
+            raise PermissionError("Kein Zugriff auf den ausgewählten Streamer.")
+
         try:
             self.cursor.execute("""
                 INSERT INTO stream_planung 
@@ -166,6 +276,9 @@ class DataManager:
 
     def delete_event(self, event_id, date_key):
         """Event über seine ID löschen (date_key wird nicht benötigt)."""
+        if not self.manager_has_event_access(event_id):
+            return False
+
         self.cursor.execute(
             "DELETE FROM stream_planung WHERE plan_id = %s",
             (event_id,)
@@ -176,6 +289,11 @@ class DataManager:
     def update_event(self, event_id, old_date_key, new_date_key,
                      new_title, new_streamer_id, new_streamer_name):
         """Event-Daten in stream_planung updaten."""
+        if not self.manager_has_event_access(event_id):
+            return False
+        if not self.manager_has_streamer_access(new_streamer_id):
+            return False
+
         neues_datum = new_date_key + " 00:00:00"
 
         self.cursor.execute("""
@@ -191,7 +309,8 @@ class DataManager:
 
     def get_event_by_id(self, event_id, date_key):
         """Ein einzelnes Event über seine ID holen."""
-        self.cursor.execute("""
+        params = [event_id]
+        query = """
             SELECT 
                 sp.plan_id AS id,
                 DATE(sp.datum) AS date_key,
@@ -202,8 +321,18 @@ class DataManager:
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
-            WHERE sp.plan_id = %s
-        """, (event_id,))
+        """
+        if self.context_streamer_id is not None:
+            query += " WHERE sp.plan_id = %s AND sp.streamer_id = %s"
+            params.append(self.context_streamer_id)
+        else:
+            if self._is_manager_bound():
+                query += " JOIN streamer_manager smg ON smg.streamer_id = sp.streamer_id "
+            query += " WHERE sp.plan_id = %s"
+            if self._is_manager_bound():
+                query += " AND smg.user_id = %s"
+                params.append(self.manager_user_id)
+        self.cursor.execute(query, tuple(params))
         row = self.cursor.fetchone()
         if row:
             if hasattr(row['createdAt'], 'isoformat'):
@@ -214,7 +343,8 @@ class DataManager:
 
     def get_events_for_day(self, date_key):
         """Alle Events für einen bestimmten Tag (YYYY-MM-DD)."""
-        self.cursor.execute("""
+        params = [date_key]
+        query = """
             SELECT 
                 sp.plan_id AS id,
                 DATE(sp.datum) AS date_key,
@@ -225,9 +355,19 @@ class DataManager:
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
-            WHERE DATE(sp.datum) = %s
-            ORDER BY sp.datum
-        """, (date_key,))
+        """
+        if self.context_streamer_id is not None:
+            query += " WHERE DATE(sp.datum) = %s AND sp.streamer_id = %s"
+            params.append(self.context_streamer_id)
+        else:
+            if self._is_manager_bound():
+                query += " JOIN streamer_manager smg ON smg.streamer_id = sp.streamer_id "
+            query += " WHERE DATE(sp.datum) = %s"
+            if self._is_manager_bound():
+                query += " AND smg.user_id = %s"
+                params.append(self.manager_user_id)
+        query += " ORDER BY sp.datum"
+        self.cursor.execute(query, tuple(params))
         rows = self.cursor.fetchall()
         for row in rows:
             if hasattr(row['createdAt'], 'isoformat'):
@@ -238,7 +378,8 @@ class DataManager:
 
     def get_all_events_sorted(self):
         """Alle Events, sortiert nach Datum."""
-        self.cursor.execute("""
+        params = []
+        query = """
             SELECT 
                 sp.plan_id AS id,
                 DATE(sp.datum) AS date_key,
@@ -249,8 +390,15 @@ class DataManager:
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
-            ORDER BY sp.datum
-        """)
+        """
+        if self.context_streamer_id is not None:
+            query += " WHERE sp.streamer_id = %s"
+            params.append(self.context_streamer_id)
+        elif self._is_manager_bound():
+            query += " JOIN streamer_manager smg ON smg.streamer_id = sp.streamer_id WHERE smg.user_id = %s"
+            params.append(self.manager_user_id)
+        query += " ORDER BY sp.datum"
+        self.cursor.execute(query, tuple(params))
         rows = self.cursor.fetchall()
         for row in rows:
             if hasattr(row['createdAt'], 'isoformat'):
@@ -261,7 +409,8 @@ class DataManager:
 
     def get_upcoming_events(self):
         """Die nächsten 5 anstehenden Events."""
-        self.cursor.execute("""
+        params = []
+        query = """
             SELECT 
                 sp.plan_id AS id,
                 DATE(sp.datum) AS date_key,
@@ -272,10 +421,19 @@ class DataManager:
                 sp.datum AS createdAt
             FROM stream_planung sp
             JOIN streamer s ON sp.streamer_id = s.streamer_id
-            WHERE sp.datum >= NOW()
-            ORDER BY sp.datum
-            LIMIT 5
-        """)
+        """
+        if self.context_streamer_id is not None:
+            query += " WHERE sp.datum >= NOW() AND sp.streamer_id = %s"
+            params.append(self.context_streamer_id)
+        else:
+            if self._is_manager_bound():
+                query += " JOIN streamer_manager smg ON smg.streamer_id = sp.streamer_id "
+            query += " WHERE sp.datum >= NOW()"
+            if self._is_manager_bound():
+                query += " AND smg.user_id = %s"
+                params.append(self.manager_user_id)
+        query += " ORDER BY sp.datum LIMIT 5"
+        self.cursor.execute(query, tuple(params))
         rows = self.cursor.fetchall()
         for row in rows:
             if hasattr(row['createdAt'], 'isoformat'):
@@ -294,8 +452,13 @@ class ManagerDashboard(ctk.CTk):
         self.title("LiveXtrem Manager-Dashboard")
         self.geometry("1200x700")
         self.session = session
-        manager_uid = getattr(session, "user_id", None) if session else None
-        self.data_manager = DataManager(UIConfig.DATA_FILE, manager_user_id=manager_uid)
+        manager_uid = getattr(session, "user_id", None) if session and getattr(session, "is_manager", False) else None
+        context_streamer_id = getattr(session, "context_streamer_id", None) if session and getattr(session, "is_streamer", False) else None
+        self.data_manager = DataManager(
+            UIConfig.DATA_FILE,
+            manager_user_id=manager_uid,
+            context_streamer_id=context_streamer_id,
+        )
         self.current_date = datetime.date.today()
 
         self.grid_columnconfigure(0, weight=0)
@@ -879,15 +1042,18 @@ class ManagerDashboard(ctk.CTk):
                 font=ctk.CTkFont(size=12)
             ).grid(row=0, column=0, padx=(0, 5))
 
-            ctk.CTkButton(
+            can_archive = self.data_manager.can_archive_streamer(streamer["id"])
+            archive_button = ctk.CTkButton(
                 action_frame,
                 text="Archivieren",
                 command=lambda s=streamer: self._confirm_delete_streamer(s),
-                fg_color="red",
-                hover_color="#A00000",
+                fg_color="red" if can_archive else "gray",
+                hover_color="#A00000" if can_archive else "gray",
                 width=80, height=25,
-                font=ctk.CTkFont(size=12)
-            ).grid(row=0, column=1)
+                font=ctk.CTkFont(size=12),
+                state="normal" if can_archive else "disabled"
+            )
+            archive_button.grid(row=0, column=1)
 
             ctk.CTkFrame(
                 list_frame, height=1, fg_color=UIConfig.PANEL_ACCENT
@@ -900,6 +1066,10 @@ class ManagerDashboard(ctk.CTk):
 
     def _confirm_delete_streamer(self, streamer):
             """Shows a confirmation dialog for deleting a streamer."""
+            if not self.data_manager.can_archive_streamer(streamer['id']):
+                self.show_message_box('Dieser Streamer darf im aktuellen Kontext nicht archiviert werden.', 'warning')
+                return
+
             dialog = ctk.CTkToplevel(self)
             dialog.title("Streamer archivieren")
             dialog.geometry("400x150")
@@ -1641,8 +1811,12 @@ class EventDialog(ctk.CTkToplevel):
             else:
                 self.master.show_message_box('Fehler beim Aktualisieren des Events.', 'error')
         else:
-            self.master.data_manager.add_event(self.old_date_key, title, streamer_id, streamer_name)
-            self.master.show_message_box('Event erfolgreich gespeichert!', 'success')
+            try:
+                self.master.data_manager.add_event(self.old_date_key, title, streamer_id, streamer_name)
+                self.master.show_message_box('Event erfolgreich gespeichert!', 'success')
+            except PermissionError:
+                self.master.show_message_box('Kein Zugriff auf den ausgewählten Streamer.', 'error')
+                return
 
         self.master.update_all_events_list()
         self.master.update_calendar()
@@ -1680,9 +1854,15 @@ class StreamerDialog(ctk.CTkToplevel):
         # Status
         ctk.CTkLabel(self, text="Status:", text_color=UIConfig.TEXT_DARK, anchor="w").grid(row=3, column=0, padx=20, pady=(5, 0), sticky="ew")
         self.status_var = ctk.StringVar(value=self.streamer.get('status', 'Aktiv'))
+        status_values = ["Aktiv", "Pause", "Archiviert"]
+        if self.master.data_manager.is_protected_streamer(self.streamer['id']):
+            status_values = [value for value in status_values if value != "Archiviert"]
+            if self.status_var.get() == "Archiviert":
+                self.status_var.set("Aktiv")
+
         self.status_optionmenu = ctk.CTkOptionMenu(
             self,
-            values=["Aktiv", "Pause", "Archiviert"],
+            values=status_values,
             variable=self.status_var,
             corner_radius=8
                             )
@@ -1723,9 +1903,13 @@ class StreamerDialog(ctk.CTkToplevel):
             self.master.show_message_box('Name darf nicht leer sein.', 'warning')
             return
 
-        success = self.master.data_manager.update_streamer(
-            self.streamer['id'], new_name, new_status, new_color
-        )
+        try:
+            success = self.master.data_manager.update_streamer(
+                self.streamer['id'], new_name, new_status, new_color
+            )
+        except PermissionError as exc:
+            self.master.show_message_box(str(exc), 'warning')
+            return
 
         if success:
             self.master.show_message_box(f"Streamer '{new_name}' aktualisiert.", 'success')
