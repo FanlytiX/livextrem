@@ -102,6 +102,7 @@ class StreamerDashboard(ctk.CTk):
 
         self._setup_sidebar()
         self._setup_content_area()
+        self.bind("<Map>", self._on_dashboard_mapped)
 
         # Lokale (persistierte) Daten laden (ToDos, Finanzen, Streamplanung)
         self._overview_stats_cache = None
@@ -116,7 +117,13 @@ class StreamerDashboard(ctk.CTk):
         self._load_dashboard_data_async()
         self.show_view("Overview")
 
-
+    def _on_dashboard_mapped(self, event=None):
+        if event is not None and event.widget is not self:
+            return
+        try:
+            self.after(0, lambda: self._load_dashboard_data_async(force=True))
+        except Exception:
+            pass
 
 
     # ---------- DASHBOARD DATA (DB / REMOTE) ----------
@@ -569,6 +576,55 @@ class StreamerDashboard(ctk.CTk):
             except Exception:
                 pass
 
+    def _db_delete_planned_stream(self, plan_id: int):
+        """Löscht einen geplanten Stream streamer-spezifisch und entfernt verwaisten Content."""
+        if not self.streamer_id:
+            raise ValueError("Kein streamer_id in der Session gefunden.")
+        db = self._db()
+        try:
+            cur = db.cursor()
+            cur.execute(
+                """SELECT content_id
+                     FROM stream_planung
+                    WHERE plan_id = ? AND streamer_id = ?""",
+                (int(plan_id), int(self.streamer_id))
+            )
+            row = cur.fetchone()
+            if not row:
+                return False
+
+            content_id = row[0] if isinstance(row, (tuple, list)) else row
+
+            cur.execute(
+                """DELETE FROM stream_planung
+                    WHERE plan_id = ? AND streamer_id = ?""",
+                (int(plan_id), int(self.streamer_id))
+            )
+
+            if content_id:
+                cur.execute(
+                    """SELECT COUNT(*)
+                         FROM stream_planung
+                        WHERE content_id = ?""",
+                    (int(content_id),)
+                )
+                ref_count_row = cur.fetchone()
+                ref_count = ref_count_row[0] if isinstance(ref_count_row, (tuple, list)) else 0
+                if int(ref_count) == 0:
+                    cur.execute(
+                        """DELETE FROM content
+                            WHERE content_id = ?""",
+                        (int(content_id),)
+                    )
+
+            db.commit()
+            return True
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+
     def _load_team_from_db(self):
         """Lädt Moderator/Manager Nutzer aus der DB."""
         team = []
@@ -717,32 +773,6 @@ class StreamerDashboard(ctk.CTk):
             )
             btn.grid(row=i+2, column=0, padx=10, pady=5, sticky="ew")
             self.nav_buttons[view_name] = btn
-
-        self.btn_open_moderator = ctk.CTkButton(
-            self.sidebar,
-            text="🛡️ Moderator Dashboard",
-            command=self._switch_to_moderator_dashboard,
-            fg_color="transparent",
-            text_color=COLOR_TEXT,
-            hover_color=COLOR_CARD,
-            anchor="w",
-            height=40,
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        self.btn_open_moderator.grid(row=6, column=0, padx=10, pady=(15, 5), sticky="ew")
-
-        self.btn_open_manager = ctk.CTkButton(
-            self.sidebar,
-            text="🗂️ Manager Dashboard",
-            command=self._switch_to_manager_dashboard,
-            fg_color="transparent",
-            text_color=COLOR_TEXT,
-            hover_color=COLOR_CARD,
-            anchor="w",
-            height=40,
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        self.btn_open_manager.grid(row=7, column=0, padx=10, pady=5, sticky="ew")
 
         self.btn_theme = ctk.CTkButton(self.sidebar, text="🌙 Modus wechseln", command=self._toggle_theme, fg_color=COLOR_PRIMARY)
         self.btn_theme.grid(row=9, column=0, padx=20, pady=20, sticky="ew")
@@ -1341,6 +1371,16 @@ class StreamerDashboard(ctk.CTk):
             self.btn_theme.configure(text="🌙 Modus wechseln")
         self.show_view("Overview") 
 
+    def _fit_popup_to_content(self, window, width, min_height=0, padding=24):
+        try:
+            window.update_idletasks()
+            required_height = window.winfo_reqheight() + padding
+            final_height = max(min_height, required_height)
+            window.geometry(f"{width}x{final_height}")
+            window.minsize(width, final_height)
+        except Exception:
+            pass
+
     # --- POPUPS ---
     def _edit_todo_popup(self, item):
         d = ctk.CTkToplevel(self)
@@ -1372,7 +1412,8 @@ class StreamerDashboard(ctk.CTk):
                 print("ToDo DB-Update Fehler:", repr(e))
                 mb.showerror("DB Fehler", f"ToDo konnte nicht gespeichert werden:\n{e}")
 
-        ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack()
+        ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=(0, 20))
+        self._fit_popup_to_content(d, width=300, min_height=150)
     def _content_popup(self, stream_data):
         d = ctk.CTkToplevel(self)
         title = "Neuen Stream planen" if stream_data is None else "Stream bearbeiten"
@@ -1483,7 +1524,42 @@ class StreamerDashboard(ctk.CTk):
             except ValueError:
                 mb.showerror("Fehler", "Ungültiges Datum.")
 
-        ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
+        action_frame = ctk.CTkFrame(d, fg_color="transparent")
+        action_frame.pack(fill="x", padx=20, pady=20)
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkButton(action_frame, text="Speichern", command=save, fg_color=COLOR_PRIMARY).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+
+        if stream_data:
+            def delete_stream():
+                if not mb.askyesno("Stream löschen", "Möchtest du diesen Stream wirklich löschen?"):
+                    return
+
+                def worker():
+                    try:
+                        self._ensure_dashboard_tables()
+                        success = self._db_delete_planned_stream(int(stream_data.get("id")))
+                        if not success:
+                            raise ValueError("Der ausgewählte Stream konnte nicht gelöscht werden.")
+                        self.planned_streams = self._db_load_planned_streams()
+                        try:
+                            self.after(0, self._refresh_content_list)
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        print("Content Planung DB Fehler:", repr(e))
+                        try:
+                            self.after(0, lambda: mb.showerror("Fehler", f"Löschen fehlgeschlagen: {e}"))
+                        except Exception:
+                            pass
+
+                threading.Thread(target=worker, daemon=True).start()
+                d.destroy()
+
+            ctk.CTkButton(action_frame, text="Archivieren", command=delete_stream, fg_color=COLOR_DANGER, hover_color="#a61e1e").grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+        self._fit_popup_to_content(d, width=400, min_height=320)
 
     def _finance_popup(self, entry_data=None):
         d = ctk.CTkToplevel(self)
@@ -1594,6 +1670,7 @@ class StreamerDashboard(ctk.CTk):
                 mb.showerror("DB Fehler", f"Buchung konnte nicht gespeichert werden:\n{e}")
 
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
+        self._fit_popup_to_content(d, width=400, min_height=320)
     def _role_popup(self, user_data=None):
         d = ctk.CTkToplevel(self)
         is_edit = bool(user_data)
@@ -1654,6 +1731,7 @@ class StreamerDashboard(ctk.CTk):
                 mb.showerror("Fehler", str(e))
 
         ctk.CTkButton(d, text="Speichern", command=save, fg_color=COLOR_PRIMARY).pack(pady=20)
+        self._fit_popup_to_content(d, width=420, min_height=300)
 
 
     def _change_password_popup(self, user_data):
@@ -1687,6 +1765,7 @@ class StreamerDashboard(ctk.CTk):
                 mb.showerror("Fehler", str(e))
 
         ctk.CTkButton(d, text="Speichern", command=save_pw, fg_color=COLOR_PRIMARY).pack(pady=20)
+        self._fit_popup_to_content(d, width=380, min_height=240)
 
     def _export_csv(self):
         filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])

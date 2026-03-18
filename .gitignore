@@ -6,5 +6,5 @@ livextrem/moderator_dashboard1.py
 livextrem/config_local.json
 build
 dist
-buildspecs
+buildspec
 .venv

@@ -466,6 +466,7 @@ class ManagerDashboard(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         self.nav_buttons = {}
+        self.current_view = "Startseite"
 
         self._setup_sidebar()
 
@@ -474,10 +475,41 @@ class ManagerDashboard(ctk.CTk):
         self.main_content_area.grid_columnconfigure(0, weight=1)
         self.main_content_area.grid_rowconfigure(1, weight=1)
 
+        self.bind("<Map>", self._on_dashboard_mapped)
         self.show_view("Startseite")
 
     # --- VIEW MANAGER ---
+    def _on_dashboard_mapped(self, event=None):
+        if event is not None and event.widget is not self:
+            return
+        try:
+            self.after(0, self.refresh_current_view)
+        except Exception:
+            pass
+
+    def refresh_current_view(self):
+        self.show_view(getattr(self, "current_view", "Startseite"))
+
+    def _fit_popup_to_content(self, window, width, min_height=0, padding=24):
+        try:
+            window.update_idletasks()
+            required_height = window.winfo_reqheight() + padding
+            final_height = max(min_height, required_height)
+            window.geometry(f"{width}x{final_height}")
+            window.minsize(width, final_height)
+        except Exception:
+            pass
+
     def show_view(self, view_name):
+        self.current_view = view_name
+
+        try:
+            self.data_manager.conn.ping(reconnect=True, attempts=1, delay=0)
+        except Exception:
+            try:
+                self.data_manager._connect_db()
+            except Exception:
+                pass
 
         for widget in self.main_content_area.winfo_children():
             widget.destroy()
@@ -729,7 +761,7 @@ class ManagerDashboard(ctk.CTk):
 
         # Zeilen füllen
         for i, event in enumerate(events):
-            row = i + 2
+            row = i * 2 + 2
 
             date_obj = datetime.date.fromisoformat(event['date_key'])
             formatted_date = date_obj.strftime("%d.%m.%Y")
@@ -877,6 +909,8 @@ class ManagerDashboard(ctk.CTk):
         ctk.CTkButton(button_frame, text="Abbrechen", command=dialog.destroy,
                       fg_color="gray", hover_color="darkgray").grid(row=0, column=1, padx=10)
 
+        self._fit_popup_to_content(dialog, width=400, min_height=150)
+
     def _render_streamer_view(self):
         streamer_frame = ctk.CTkFrame(self.main_content_area, fg_color=UIConfig.BG_WHITE)
         streamer_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -987,7 +1021,7 @@ class ManagerDashboard(ctk.CTk):
 
         # ---- LISTE FÜLLEN ---------------------------------------------------
         for i, streamer in enumerate(streamers):
-            row = i + 2
+            row = i * 2 + 2
 
             name = streamer.get("name", "Unbekannt")
             status = streamer.get("status", "Aktiv")
@@ -1100,6 +1134,8 @@ class ManagerDashboard(ctk.CTk):
 
             ctk.CTkButton(button_frame, text="Abbrechen", command=dialog.destroy,
                         fg_color="gray", hover_color="darkgray").grid(row=0, column=1, padx=10)
+
+            self._fit_popup_to_content(dialog, width=400, min_height=150)
 
     def _add_new_streamer(self):
             name = self.new_streamer_entry.get().strip()
@@ -1671,6 +1707,8 @@ class ManagerDashboard(ctk.CTk):
             hover_color=UIConfig.SIDEBAR_HOVER
         ).pack(pady=(0, 5))
 
+        self._fit_popup_to_content(popup, width=350, min_height=130)
+
 
 # --- DIALOG CLASS FOR EDITING/ADDING EVENTS ---
 
@@ -1773,6 +1811,11 @@ class EventDialog(ctk.CTkToplevel):
                       fg_color=UIConfig.HEADER_ORANGE, hover_color=UIConfig.HEADER_HOVER, corner_radius=10,
                       font=ctk.CTkFont(size=16, weight="bold")).grid(row=current_row, column=0, padx=20, pady=(10, 20), sticky="ew")
         current_row += 1
+
+        self.update_idletasks()
+        required_height = max(420, self.winfo_reqheight() + 24)
+        self.geometry(f"450x{required_height}")
+        self.minsize(450, required_height)
 
     def _save_event(self):
         title = self.title_entry.get().strip()
@@ -1892,6 +1935,11 @@ class StreamerDialog(ctk.CTkToplevel):
         ctk.CTkButton(self, text="Speichern", command=self._save_streamer,
                       fg_color=UIConfig.SIDEBAR_BLUE, hover_color=UIConfig.SIDEBAR_HOVER, corner_radius=10,
                       font=ctk.CTkFont(size=16, weight="bold")).grid(row=7, column=0, padx=20, pady=(10, 20), sticky="ew")
+
+        self.update_idletasks()
+        required_height = max(300, self.winfo_reqheight() + 24)
+        self.geometry(f"400x{required_height}")
+        self.minsize(400, required_height)
 
     def _save_streamer(self):
         new_name = self.name_entry.get().strip()
