@@ -1,0 +1,20 @@
+site_name: liveXtrem
+site_description: Projektdokumentation
+site_url: https://fanlytix.github.io/livextrem/
+repo_url: https://github.com/FanlytiX/livextrem
+site_dir: site
+use_directory_urls: true
+nav:
+  - Start: index.md
+  - Installation: installation.md
+  - Setup: setup.md
+  - Architektur: architecture.md
+  - API & Code: api.md
+  - User Guide: user-guide.md
+  - Technische Strategie: strategy.md
+theme:
+  name: mkdocs
+extra_css:
+  - assets/styles/custom.css
+markdown_extensions:
+  - attr_list
