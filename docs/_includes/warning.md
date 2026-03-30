@@ -1,1 +1,0 @@
-<div class="callout warning"><strong>Wichtig:</strong> Zugangsdaten, Datenbankpasswörter und API-Keys gehören nicht in ein öffentliches Repository. In der Dokumentation werden deshalb nur Platzhalter und sichere Konfigurationsmuster beschrieben.</div>

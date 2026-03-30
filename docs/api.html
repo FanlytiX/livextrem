@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>API und Code-Struktur | liveXtrem</title><meta content="Projektdokumentation" name="description"/><link href="assets/styles/custom.css" rel="stylesheet"/></head><body><div class="site-shell"><header class="site-header"><div class="brand-row"><img alt="liveXtrem Logo" class="brand-logo" src="assets/images/logo.png"/><div class="brand-copy"><h1>liveXtrem</h1><p>Dokumentation für eine Desktop-Plattform zur Organisation von Streaming, Teamarbeit und Creator-Prozessen.</p></div></div><div class="header-meta"><span class="meta-pill">Projekt-Dokumentation</span><span class="meta-pill">GitHub Pages Ready</span></div></header><main class="main-card"><div class="topbar"><div class="eyebrow">liveXtrem • Technische Dokumentation</div><nav aria-label="Seitennavigation" class="doc-nav"><a href="index.html">Start</a><a href="installation.html">Installation</a><a href="setup.html">Setup</a><a href="architecture.html">Architektur</a><a aria-current="page" class="active" href="api.html">API &amp; Code</a><a href="user-guide.html">User Guide</a><a href="strategy.html">Technische Strategie</a></nav></div><h1>API und Code-Struktur</h1><p class="page-lead">Einordnung der wichtigsten Module, Klassen und Integrationspunkte der Anwendung.</p>
+<div class="callout"><strong>Info:</strong> Diese Dokumentation ist für GitHub Pages aufgebaut. Bilder und Styles liegen bewusst in separaten Verzeichnissen, damit sie ohne Änderungen an den Markdown-Dateien ausgetauscht werden können.</div>
+<h2>Einordnung</h2>
+<p>liveXtrem stellt keine klassische Web-API mit öffentlichen REST-Endpunkten bereit. Stattdessen basiert die Anwendung auf einer internen Modul- und Funktionsschnittstelle. Für die technische Dokumentation ist deshalb nicht die URL-Struktur einer Serveranwendung entscheidend, sondern die Frage, welche Module welche Verantwortung tragen und wie Daten zwischen GUI, Datenbank und Twitch-Integration fliessen.</p>
+<h2>Einstieg und Steuerung</h2>
+<h3><code>login.py</code></h3>
+<p>Dieses Modul bildet den Einstieg in das Anwendungssystem. Es verwaltet die Login-Oberfläche, führt Benutzeranmeldung und Registrierung durch und erzeugt nach erfolgreicher Authentifizierung ein Sitzungsobjekt. Bemerkenswert ist, dass Dashboards nicht aus einem Hintergrundthread gestartet werden, sondern sauber über den Main-Thread, was für Tkinter-basierte Anwendungen wichtig ist.</p>
+<h3><code>session_user.py</code></h3>
+<p><code>SessionUser</code> und <code>TwitchIdentity</code> modellieren die aktuell angemeldete Sitzung. Neben den offensichtlichen Benutzerdaten enthält die Session auch fachliche Informationen wie den aktiven Streamer-Kontext und Berechtigungen für Manager- oder Moderator-Dashboards. Diese Kapselung vereinfacht rollenbezogene Entscheidungen in der gesamten Anwendung.</p>
+<h3><code>router.py</code></h3>
+<p>Der Router ist die Vermittlungsschicht zwischen Login und Fachoberfläche. Er entscheidet, welches Dashboard geöffnet wird, und prüft dabei zugleich Rollenrechte. Die Datei ist klein, aber architektonisch wichtig, weil sie die Startlogik zentralisiert und direkte Kopplungen reduziert.</p>
+<h2>Konfiguration und Sicherheit</h2>
+<h3><code>config.py</code></h3>
+<p>Das Konfigurationsmodul liest Datenbank- und Twitch-Parameter entweder aus Umgebungsvariablen oder aus einer lokalen JSON-Datei. Es validiert ausserdem, ob alle Pflichtwerte vorhanden sind. Dadurch wird Konfiguration nicht über den Code verteilt, sondern an einer zentralen Stelle kontrolliert.</p>
+<h3><code>security.py</code></h3>
+<p>Dieses Modul kümmert sich um die Passwortverarbeitung. Neue Passwörter werden mit PBKDF2-SHA256 und Salt gehasht. Zusätzlich ist eine Rückwärtskompatibilität für ältere SHA256-Hashes vorgesehen, sodass bestehende Daten migriert werden können, ohne Benutzerkonten unbrauchbar zu machen. Für eine Desktop-Anwendung ist das eine erfreulich saubere Sicherheitsentscheidung, weil Klartextpasswörter und triviale Hashes vermieden werden.</p>
+<h2>Datenbankzugriff</h2>
+<h3><code>database_connection.py</code></h3>
+<p>Hier wird die technische Verbindung zur MariaDB aufgebaut. Das Modul stellt Hilfsfunktionen bereit, um Abfragen auszuführen, Tabelleninformationen auszulesen und Verbindungen wieder sauber zu schliessen. Es dient als Basis für höherliegende Abfragemodule.</p>
+<h3><code>database_queries.py</code></h3>
+<p>Dieses Modul enthält Datenbanklogik für fachliche Abfragen rund um Benutzer- und Streamer-bezogene Daten. Dazu gehören aus Sicht des Projekts insbesondere Daten, die für Dashboards und Auswertungen gebraucht werden. Die Trennung in ein eigenes Query-Modul verhindert, dass SQL-Logik direkt in GUI-Ereignisfunktionen verteilt wird.</p>
+<h3><code>database_queries_moderator.py</code></h3>
+<p>Die Moderator-Logik kombiniert lokale Historienverwaltung mit Twitch-bezogenen Moderationsfunktionen. Hier werden Chat-Nachrichten aus VODs aufbereitet, Moderationsaktionen lokal festgehalten und fachlich relevante Rückgabestrukturen für das Dashboard erzeugt. Der entscheidende Vorteil liegt darin, dass die GUI nicht direkt mit Rohantworten der Twitch-API arbeiten muss.</p>
+<h2>Twitch-nahe Funktionsmodule</h2>
+<h3><code>fremdsys/oauth.py</code></h3>
+<p>Dieses Modul implementiert den OAuth-Prozess für Twitch. Es startet einen lokalen HTTP-Callback, öffnet den Browser für die Anmeldung, tauscht den Authorization Code gegen Tokens aus und liest anschließend Benutzerinformationen aus. Die Lösung ist für eine Desktop-Anwendung geeignet, weil sie keinen separaten Webserver voraussetzt und den Login dennoch sauber über den offiziellen OAuth-Flow abwickelt.</p>
+<h3><code>fremdsys/tapi_data.py</code></h3>
+<p>Hier liegen datenorientierte Twitch-Funktionen wie das Laden vergangener Streams, Follower- und Subscriber-Daten oder Kennzahlen zu VOD-Aufrufen. Diese Schnittstelle ist vor allem für analytische oder informationsbezogene Oberflächen relevant.</p>
+<h3><code>fremdsys/tapi_mod.py</code></h3>
+<p>Dieses Modul kapselt Moderationsfunktionen wie das Laden von VOD-Chatdaten sowie Ban-, Timeout- und Unban-Aktionen. Fachlich ist dies die Brücke zwischen LiveXtrem und den Twitch-Moderationsschnittstellen.</p>
+<h2>Zentrale GUI-Module</h2>
+<h3><code>streamer_dashboard.py</code></h3>
+<p>Das Streamer-Dashboard vereint mehrere Fachbereiche in einer Oberfläche. Sichtbar sind unter anderem To-do-Liste, nächster Stream, geplante Streams, KI-Content-Assistent, Finanzbuchungen mit CSV- und PDF-Export sowie Team- und Rollenverwaltung. Das Modul ist dadurch kein reines View-Element, sondern ein zentraler Anwendungsknoten.</p>
+<h3><code>manager_gui.py</code></h3>
+<p>Das Manager-Dashboard ist auf Termin- und Ressourcenkoordination ausgerichtet. Im Code sichtbar sind ein eigener <code>DataManager</code>, Kalendernavigation, Eventdialoge und Streamer-Verwaltung. Die Struktur deutet auf einen klaren Anwendungsfall hin: Management-Aufgaben sollen ohne Zugriff auf alle Streamer-Daten pauschal möglich sein, sondern immer innerhalb zugänglicher Zuständigkeiten.</p>
+<h3><code>moderator_dashboard.py</code></h3>
+<p>Dieses Modul bildet die Bedienlogik für Moderatoren ab. Neben einer Übersicht über Statistik und Historie sind ein Chat-Monitor sowie Bedienflächen für konkrete Eingriffe vorhanden. Die Trennung gegenüber den anderen Dashboards ist sinnvoll, weil Moderation andere Daten, andere Risiken und andere Berechtigungen betrifft.</p>
+<h2>Technisch erkennbare fachliche Kerntabellen</h2>
+<p>Aus den im Quellcode verwendeten SQL-Abfragen ergeben sich insbesondere diese zentralen Tabellen:</p>
+<p>| Tabelle | Zweck |
+|---|---|
+| <code>users</code> | Grundlegende Benutzerkonten |
+| <code>user_roles</code> | Rollenmodell für Streamer, Moderatoren und Manager |
+| <code>streamer</code> | Fachlicher Streamer-Kontext |
+| <code>moderator</code> | Moderatorbezogene Zuordnung |
+| <code>streamer_manager</code> | Verknüpfung zwischen Managern und Streamern |
+| <code>streamer_moderator</code> | Verknüpfung zwischen Moderatoren und Streamern |
+| <code>stream_planung</code> | Planung kommender Streams und Events |
+| <code>streamer_finances</code> | Einnahmen- und Ausgabenverwaltung |
+| <code>streamer_todos</code> | Aufgabenverwaltung im Streamer-Dashboard |
+| <code>twitch_tokens</code> | Twitch-Identitätsdaten je Benutzer |</p>
+<h2>Fazit zur Code-Struktur</h2>
+<p>Die Codebasis ist funktional in klar erkennbare Verantwortungsbereiche gegliedert: Einstieg, Session, Routing, GUI, Datenbank und externe API-Integration. Diese Struktur ist für eine schulische Projektanwendung absolut sinnvoll, weil sie Komplexität sichtbar aufteilt und spätere Erweiterungen oder Fehlersuchen erleichtert.</p>
+</main><footer class="site-footer"><div>liveXtrem Dokumentation</div><div>Statisch bereitgestellt für GitHub Pages</div></footer></div></body></html>

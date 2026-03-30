@@ -1,1 +1,0 @@
-<div class="callout tip"><strong>Tipp:</strong> Wenn später echte Screenshots oder Diagramme vorliegen, können die vorhandenen Platzhalterdateien einfach ersetzt werden, solange Dateiname und Pfad erhalten bleiben.</div>
