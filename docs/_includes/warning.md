@@ -1,1 +1,1 @@
-> ⚠️ **Achtung:** {{ content }}
+<div class="callout warning"><strong>Wichtig:</strong> Zugangsdaten, Datenbankpasswoerter und API-Keys gehoeren nicht in ein oeffentliches Repository. In der Dokumentation werden deshalb nur Platzhalter und sichere Konfigurationsmuster beschrieben.</div>

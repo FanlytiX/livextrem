@@ -1,3 +1,20 @@
 title: liveXtrem
+subtitle: Projektdokumentation
+email: ''
+description: >-
+  Technische und benutzerorientierte Dokumentation des Projekts liveXtrem fuer GitHub Pages.
+baseurl: ""
+url: ""
 theme: minima
 markdown: kramdown
+kramdown:
+  input: GFM
+plugins: []
+header_pages:
+  - index.md
+  - installation.md
+  - setup.md
+  - architecture.md
+  - api.md
+  - user-guide.md
+  - strategy.md

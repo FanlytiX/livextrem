@@ -1,1 +1,1 @@
-> ℹ️ **Hinweis:** {{ content }}
+<div class="callout"><strong>Info:</strong> Diese Dokumentation ist fuer GitHub Pages aufgebaut. Bilder und Styles liegen bewusst in separaten Verzeichnissen, damit sie ohne Aenderungen an den Markdown-Dateien ausgetauscht werden koennen.</div>
