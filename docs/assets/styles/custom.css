@@ -100,7 +100,7 @@ body::before {
   z-index: 1;
 }
 .meta-pill, .eyebrow {
-  display: inline-flex;
+  display: inline;
   align-items: center;
   gap: .4rem;
   border-radius: 999px;
@@ -112,6 +112,7 @@ body::before {
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.12);
 }
+
 .main-card {
   position: relative;
   background: linear-gradient(180deg, rgba(14, 20, 40, 0.88), rgba(10, 16, 32, 0.94));
@@ -174,10 +175,10 @@ h1 {
 }
 h2 {
   font-size: clamp(1.45rem, 3vw, 2rem);
-  margin-top: 2rem;
+  margin-top: 3rem;
   padding-top: .2rem;
 }
-h3 { font-size: 1.18rem; margin-top: 1.3rem; }
+h3 { font-size: 1.18rem; margin-top: 2rem; }
 p, li { color: var(--lx-text); }
 a { color: #8eb4ff; }
 a:hover { color: #bfd4ff; }
@@ -236,12 +237,12 @@ strong { color: #fff; }
 .badges {
   display: flex;
   flex-wrap: wrap;
-  gap: .5rem;
+  gap: .9rem;
   margin: 1rem 0 1.25rem;
 }
 .badges img {
   margin: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   box-shadow: 0 8px 18px rgba(0,0,0,.18);
 }
 .callout {
@@ -370,4 +371,65 @@ img { max-width: 100%; height: auto; }
   .doc-nav a { width: 100%; text-align: center; }
   .cta-row { flex-direction: column; }
   .cta-link { width: 100%; }
+}
+
+.step-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 1.2rem 0 1.8rem;
+}
+
+.step-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(162,180,255,.14);
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+.step-card h3 {
+  margin-top: .7rem;
+  margin-bottom: .55rem;
+}
+
+.step-card p {
+  margin: 0;
+  color: var(--lx-muted);
+  line-height: 1.6;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(91,99,255,.7), rgba(59,130,246,.58));
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 20px rgba(59,130,246,.16);
+}
+
+.step-list {
+  padding-left: 1.25rem;
+}
+
+.step-list > li {
+  margin: .6rem 0;
+  padding-left: .15rem;
+}
+
+.quick-links .link-card {
+  min-height: auto;
+}
+
+.quick-links .link-card code {
+  white-space: nowrap;
+}
+
+.config-table td:first-child code,
+.config-table td:nth-child(2) code {
+  white-space: nowrap;
 }
