@@ -1,10 +1,23 @@
 [project]
 name = "livextrem"
 version = "0.1.0"
-description = "Add your description here"
+description = "Desktop-Plattform zur Organisation von Streaming, Teamarbeit und Creator-Prozessen"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "customtkinter>=5.2.2",
+    "pillow>=10.0.0",
+    "mariadb>=1.1.10",
+    "mysql-connector-python>=9.0.0",
+    "requests>=2.32.0",
+    "tkcalendar>=1.6.1",
+    "reportlab>=4.2.0",
+    "twitchapi>=4.4.0",
     "mkdocs>=1.6.1",
+    "python-dotenv>=1.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0.0",
 ]

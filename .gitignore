@@ -1,9 +1,5 @@
-livextrem/database_connection.py
-livextrem/fremdsys/tw_privdata.py
 livextrem/fremdsys/__pycache__
 livextrem/__pycache__
-livextrem/moderator_dashboard1.py
-livextrem/config_local.json
 build
 dist
 buildspec
