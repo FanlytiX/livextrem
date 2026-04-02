@@ -1,4 +1,0 @@
-Daten, die wir grundsätzlich vom Nutzer erfasst werden
-
-- Benutzername (Streamername)
-- Passwort (Für Software, gehasht mit SHA256)
