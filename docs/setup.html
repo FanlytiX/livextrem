@@ -168,52 +168,52 @@
 
       <h3>1. XAMPP herunterladen und installieren</h3>
       <ol class="step-list">
-        <li>Öffne die offizielle XAMPP-Seite unter <a href="https://www.apachefriends.org/de/index.html">https://www.apachefriends.org/de/index.html</a>.</li>
-        <li>Lade die Windows-Version von XAMPP herunter.</li>
-        <li>Starte die Installationsdatei und folge dem Installationsassistenten. Die Standardoptionen sind für dieses Projekt in der Regel ausreichend.</li>
-        <li>Öffne nach Abschluss die Anwendung <strong>XAMPP Control Panel</strong>.</li>
+        <li>Öffnen Sie die offizielle XAMPP-Seite unter <a href="https://www.apachefriends.org/de/index.html">https://www.apachefriends.org/de/index.html</a>.</li>
+        <li>Laden Sie die Windows-Version von XAMPP herunter.</li>
+        <li>Starten Sie die Installationsdatei und folgen Sie dem Installationsassistenten. Die Standardoptionen sind für dieses Projekt in der Regel ausreichend.</li>
+        <li>Öffnen Sie nach Abschluss die Anwendung <strong>XAMPP Control Panel</strong>.</li>
       </ol>
 
       <div class="callout"><strong>Info:</strong> In XAMPP läuft die Datenbank technisch als MariaDB. Im Control Panel und in älteren Bezeichnungen taucht oft trotzdem noch <code>MySQL</code> auf. Für dieses Setup ist damit der Datenbankdienst gemeint, den liveXtrem verwendet.</div>
 
       <h3>2. Benötigte Module starten</h3>
       <ol class="step-list">
-        <li>Starte im XAMPP Control Panel die Module <code>Apache</code> und <code>MySQL</code>.</li>
+        <li>Starten Sie im XAMPP Control Panel die Module <code>Apache</code> und <code>MySQL</code>.</li>
         <li>Wenn beide laufen, sind die Zeilen im Control Panel als aktiv markiert.</li>
-        <li>Öffne zur Kontrolle im Browser <code>http://localhost/</code>. Wenn die XAMPP-Startseite erscheint, läuft Apache korrekt.</li>
-        <li>Öffne anschließend <code>http://localhost/phpmyadmin/</code>. Damit gelangst du in die Datenbankverwaltung.</li>
+        <li>Öffnen Sie zur Kontrolle im Browser <code>http://localhost/</code>. Wenn die XAMPP-Startseite erscheint, läuft Apache korrekt.</li>
+        <li>Öffnen Sie anschließend <code>http://localhost/phpmyadmin/</code>. Damit gelangen Sie in die Datenbankverwaltung.</li>
       </ol>
 
       <div class="callout warning"><strong>Wichtig:</strong> Solange liveXtrem auf die Datenbank zugreift, muss der Datenbankdienst in XAMPP laufen. Praktisch heißt das: Vor dem Start von liveXtrem XAMPP öffnen und prüfen, dass <code>MySQL</code> aktiv ist. Für Arbeiten mit <code>phpMyAdmin</code> muss zusätzlich <code>Apache</code> laufen.</div>
 
       <h3>3. Leere Datenbank <code>livextrem</code> anlegen</h3>
       <ol class="step-list">
-        <li>Öffne in phpMyAdmin die Startseite.</li>
-        <li>Wähle den Bereich <strong>Neu</strong> beziehungsweise <strong>New</strong>, um eine neue Datenbank anzulegen.</li>
-        <li>Vergib als Namen exakt <code>livextrem</code>.</li>
-        <li>Lege die Datenbank an. Wenn eine Zeichencodierung abgefragt wird, ist <code>utf8mb4</code> passend.</li>
+        <li>Öffnen Sie in phpMyAdmin die Startseite.</li>
+        <li>Wählen Sie den Bereich <strong>Neu</strong> beziehungsweise <strong>New</strong>, um eine neue Datenbank anzulegen.</li>
+        <li>Vergeben Sie als Namen exakt <code>livextrem</code>.</li>
+        <li>Legen Sie die Datenbank an. Wenn eine Zeichencodierung abgefragt wird, ist <code>utf8mb4</code> passend.</li>
       </ol>
 
       <h3>4. SQL-Datei importieren</h3>
       <p>Die passende SQL-Datei liegt im Projekt unter <code>database/livextrem.sql</code>. Wenn das Repository bereits geklont wurde, kann genau diese Datei direkt verwendet werden. Falls das Projekt noch nicht lokal vorliegt, kann die gleiche Datei auch aus dem GitHub-Repository heruntergeladen und anschließend lokal importiert werden.</p>
       <ol class="step-list">
-        <li>Klicke in phpMyAdmin links auf die zuvor erstellte Datenbank <code>livextrem</code>.</li>
-        <li>Wechsle oben zum Reiter <strong>Importieren</strong> beziehungsweise <strong>Import</strong>.</li>
-        <li>Wähle die Datei <code>database/livextrem.sql</code> aus.</li>
-        <li>Starte den Import mit der Standardschaltfläche am Seitenende.</li>
-        <li>Warte, bis phpMyAdmin den erfolgreichen Import bestätigt.</li>
+        <li>Klicken Sie in phpMyAdmin links auf die zuvor erstellte Datenbank <code>livextrem</code>.</li>
+        <li>Wechseln Sie oben zum Reiter <strong>Importieren</strong> beziehungsweise <strong>Import</strong>.</li>
+        <li>Wählen Sie die Datei <code>database/livextrem.sql</code> aus.</li>
+        <li>Starten Sie den Import mit der Standardschaltfläche am Seitenende.</li>
+        <li>Warten Sie, bis phpMyAdmin den erfolgreichen Import bestätigt.</li>
       </ol>
 
       <div class="callout tip"><strong>Tipp:</strong> Nach dem Import sollten Tabellen wie <code>users</code>, <code>roles</code>, <code>streamer</code>, <code>user_roles</code> und <code>twitch_tokens</code> in der Datenbank sichtbar sein. Wenn diese Tabellen fehlen, wurde die SQL-Datei nicht vollständig importiert.</div>
 
       <h3>5. Datenbankbenutzer anlegen und berechtigen</h3>
       <ol class="step-list">
-        <li>Öffne in phpMyAdmin den Bereich <strong>Benutzerkonten</strong> beziehungsweise <strong>User accounts</strong>.</li>
-        <li>Lege einen neuen Benutzer an.</li>
-        <li>Verwende als voreingestellte Projektdaten <code>livextrem</code> als Benutzername und <code>livextrem1243</code> als Passwort.</li>
-        <li>Setze den Host des Benutzers so, dass er zur lokalen Verbindung passt. Für die Standardkonfiguration des Projekts ist <code>127.0.0.1</code> passend.</li>
-        <li>Vergib diesem Benutzer alle Rechte auf die Datenbank <code>livextrem</code>.</li>
-        <li>Speichere den Benutzer.</li>
+        <li>Öffnen Sie in phpMyAdmin den Bereich <strong>Benutzerkonten</strong> beziehungsweise <strong>User accounts</strong>.</li>
+        <li>Legen Sie einen neuen Benutzer an.</li>
+        <li>Verwenden Sie als voreingestellte Projektdaten <code>livextrem</code> als Benutzername und <code>livextrem1243</code> als Passwort.</li>
+        <li>Setzen Sie den Host des Benutzers so, dass er zur lokalen Verbindung passt. Für die Standardkonfiguration des Projekts ist <code>127.0.0.1</code> passend.</li>
+        <li>Vergeben Sie diesem Benutzer alle Rechte auf die Datenbank <code>livextrem</code>.</li>
+        <li>Speichern Sie den Benutzer.</li>
       </ol>
 
       <div class="table-wrap">
@@ -262,29 +262,29 @@
 
       <h3>1. Twitch-Konto vorbereiten</h3>
       <ol class="step-list">
-        <li>Öffne die Entwicklerkonsole unter <a href="https://dev.twitch.tv/console">https://dev.twitch.tv/console</a>.</li>
-        <li>Melde dich mit dem Twitch-Konto an, das für die Registrierung der Anwendung verwendet werden soll.</li>
-        <li>Stelle sicher, dass das Twitch-Konto verifiziert ist und die Zwei-Faktor-Authentifizierung aktiviert wurde. Ohne diese Freischaltung lässt Twitch keine App-Registrierung zu.</li>
+        <li>Öffnen Sie die Entwicklerkonsole unter <a href="https://dev.twitch.tv/console">https://dev.twitch.tv/console</a>.</li>
+        <li>Melden Sie sich mit dem Twitch-Konto an, das für die Registrierung der Anwendung verwendet werden soll.</li>
+        <li>Stellen Sie sicher, dass das Twitch-Konto verifiziert ist und die Zwei-Faktor-Authentifizierung aktiviert wurde. Ohne diese Freischaltung lässt Twitch keine App-Registrierung zu.</li>
       </ol>
 
       <h3>2. Twitch-Anwendung registrieren</h3>
       <ol class="step-list">
-        <li>Wechsle in der Developer Console zum Bereich <strong>Applications</strong>.</li>
-        <li>Klicke auf <strong>Register Your Application</strong>.</li>
-        <li>Vergib einen eindeutigen Namen für die Anwendung.</li>
-        <li>Trage bei <strong>OAuth Redirect URLs</strong> exakt <code>http://localhost:8080</code> ein und füge die Adresse hinzu.</li>
-        <li>Wähle eine passende Kategorie für eine lokale Projekt- oder Desktop-Anwendung.</li>
-        <li>Schließe die Registrierung ab.</li>
+        <li>Wechseln Sie in der Developer Console zum Bereich <strong>Applications</strong>.</li>
+        <li>Klicken Sie auf <strong>Register Your Application</strong>.</li>
+        <li>Vergeben Sie einen eindeutigen Namen für die Anwendung.</li>
+        <li>Tragen Sie bei <strong>OAuth Redirect URLs</strong> exakt <code>http://localhost:8080</code> ein und füge die Adresse hinzu.</li>
+        <li>Wählen Sie eine passende Kategorie für eine lokale Projekt- oder Desktop-Anwendung.</li>
+        <li>Schließen Sie die Registrierung ab.</li>
       </ol>
 
       <div class="callout warning"><strong>Wichtig:</strong> Die Redirect-URI muss exakt mit dem Projektwert übereinstimmen. Für liveXtrem ist standardmäßig <code>http://localhost:8080</code> hinterlegt. Eine andere Schreibweise wie <code>http://127.0.0.1:8080</code>, ein anderer Port oder ein zusätzlicher Slash am Ende führen dazu, dass Twitch den OAuth-Callback ablehnt.</div>
 
       <h3>3. Client ID und Client Secret übernehmen</h3>
       <ol class="step-list">
-        <li>Öffne nach dem Erstellen im Bereich <strong>Developer Applications</strong> die soeben angelegte Anwendung.</li>
+        <li>Öffnen Sie nach dem Erstellen im Bereich <strong>Developer Applications</strong> die soeben angelegte Anwendung.</li>
         <li>Gehe auf <strong>Manage</strong>.</li>
-        <li>Kopiere die <strong>Client ID</strong>.</li>
-        <li>Erzeuge über <strong>New Secret</strong> ein <strong>Client Secret</strong> und kopiere es sofort an einen sicheren Ort.</li>
+        <li>Kopieren Sie die <strong>Client ID</strong>.</li>
+        <li>Erzeugen Sie über <strong>New Secret</strong> ein <strong>Client Secret</strong> und kopiere es sofort an einen sicheren Ort.</li>
       </ol>
 
       <div class="table-wrap">
@@ -323,8 +323,8 @@
 
       <h3>1. UV installieren</h3>
       <ol class="step-list">
-        <li>Öffne unter Windows eine <strong>PowerShell</strong> oder das integrierte Terminal in VS Code.</li>
-        <li>Führe den offiziellen Installationsbefehl aus:</li>
+        <li>Öffnen Sie unter Windows eine <strong>PowerShell</strong> oder das integrierte Terminal in VS Code.</li>
+        <li>Führen Sie den offiziellen Installationsbefehl aus:</li>
       </ol>
 
       <pre><code>powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"</code></pre>
@@ -333,27 +333,27 @@
 
       <pre><code>uv --version</code></pre>
 
-      <div class="callout tip"><strong>Tipp:</strong> Wenn der Befehl <code>uv --version</code> direkt danach noch nicht gefunden wird, schließe das Terminal vollständig und öffne es neu. Unter Windows wird der neue Pfad oft erst nach einem neuen Terminalstart erkannt.</div>
+      <div class="callout tip"><strong>Tipp:</strong> Wenn der Befehl <code>uv --version</code> direkt danach noch nicht gefunden wird, schließen Sie das Terminal vollständig und öffnen Sie es neu. Unter Windows wird der neue Pfad oft erst nach einem neuen Terminalstart erkannt.</div>
 
       <h3>2. Repository klonen</h3>
       <ol class="step-list">
-        <li>Öffne ein Terminal in dem Ordner, in dem das Projekt gespeichert werden soll.</li>
-        <li>Führe dann die beiden Befehle nacheinander aus:</li>
+        <li>Öffnen Sie ein Terminal in dem Ordner, in dem das Projekt gespeichert werden soll.</li>
+        <li>Führen Sie dann die beiden Befehle nacheinander aus:</li>
       </ol>
 
       <pre><code>git clone https://github.com/FanlytiX/livextrem
 cd livextrem</code></pre>
 
-      <p><code>git clone</code> lädt das gesamte Repository lokal herunter. Dazu gehören der Python-Code, die SQL-Datei, die Env-Datei, die Dokumentation sowie die Projektdefinition mit <code>pyproject.toml</code> und <code>uv.lock</code>. Mit <code>cd livextrem</code> wechselst du in das Verzeichnis, in dem die nächsten Befehle ausgeführt werden müssen.</p>
+      <p><code>git clone</code> lädt das gesamte Repository lokal herunter. Dazu gehören der Python-Code, die SQL-Datei, die Env-Datei, die Dokumentation sowie die Projektdefinition mit <code>pyproject.toml</code> und <code>uv.lock</code>. Mit <code>cd livextrem</code> wechseln Sie in das Verzeichnis, in dem die nächsten Befehle ausgeführt werden müssen.</p>
 
-      <div class="callout tip"><strong>Hinweis:</strong> Öffne genau diesen geklonten Ordner anschließend in VS Code. So findest du die spätere Konfigurationsdatei <code>livextrem/keydata.env</code> direkt im Projektbaum.</div>
+      <div class="callout tip"><strong>Hinweis:</strong> Öffnen Sie genau diesen geklonten Ordner anschließend in VS Code. So finden Sie die spätere Konfigurationsdatei <code>livextrem/keydata.env</code> direkt im Projektbaum.</div>
 
       <h2 id="pakete">Pakete mit UV installieren</h2>
       <p>Im Repository ist bereits festgelegt, welche Python-Abhängigkeiten liveXtrem benötigt. Deshalb werden die Pakete nicht einzeln mit mehreren <code>pip install</code>-Befehlen nachgezogen, sondern gesammelt mit <code>uv sync</code> installiert.</p>
 
       <ol class="step-list">
-        <li>Stelle sicher, dass du dich im geklonten Projektordner befindest, also dort, wo auch <code>pyproject.toml</code> und <code>uv.lock</code> liegen.</li>
-        <li>Führe anschließend aus:</li>
+        <li>Stellen Sie sicher, dass Sie sich im geklonten Projektordner befinden, also dort, wo auch <code>pyproject.toml</code> und <code>uv.lock</code> liegen.</li>
+        <li>Führen Sie anschließend aus:</li>
       </ol>
 
       <pre><code>uv sync</code></pre>
@@ -367,10 +367,10 @@ cd livextrem</code></pre>
 
       <h3>Konfigurationsdatei öffnen</h3>
       <ol class="step-list">
-        <li>Öffne das geklonte Repository in VS Code.</li>
-        <li>Wechsle im Explorer in den Unterordner <code>livextrem</code>.</li>
-        <li>Öffne die Datei <code>keydata.env</code>.</li>
-        <li>Trage dort deine Datenbank- und Twitch-Werte ein beziehungsweise prüfe die vorhandenen Standardwerte.</li>
+        <li>Öffnen Sie das geklonte Repository in VS Code.</li>
+        <li>Wechseln Sie im Explorer in den Unterordner <code>livextrem</code>.</li>
+        <li>Öffnen Sie die Datei <code>keydata.env</code>.</li>
+        <li>Tragen Sie dort Ihre Datenbank- und Twitch-Werte ein beziehungsweise prüfen Sie die vorhandenen Standardwerte.</li>
       </ol>
 
       <h3>Welche Einträge verwendet werden</h3>
@@ -428,26 +428,26 @@ cd livextrem</code></pre>
         </table>
       </div>
 
-      <div class="callout tip"><strong>Bereits vorbelegt:</strong> Die Standardwerte für Host, Port, Datenbankname, Datenbankbenutzer, Datenbankpasswort und Redirect-URI sind in der mitgelieferten <code>keydata.env</code> bereits eingetragen. Ausfüllen musst du mindestens <code>LIVEXTREM_TWITCH_CLIENT_ID</code> und <code>LIVEXTREM_TWITCH_CLIENT_SECRET</code>. Wenn du deine Datenbankdaten abweichend gewählt hast, trägst du auch diese Werte hier passend um.</div>
+      <div class="callout tip"><strong>Bereits vorbelegt:</strong> Die Standardwerte für Host, Port, Datenbankname, Datenbankbenutzer, Datenbankpasswort und Redirect-URI sind in der mitgelieferten <code>keydata.env</code> bereits eingetragen. Ausfüllen müssen Sie mindestens <code>LIVEXTREM_TWITCH_CLIENT_ID</code> und <code>LIVEXTREM_TWITCH_CLIENT_SECRET</code>. Wenn Sie Ihre Datenbankdaten abweichend gewählt haben, tragen Sie auch diese Werte hier passend um.</div>
 
       <pre><code>LIVEXTREM_DB_HOST="127.0.0.1"
 LIVEXTREM_DB_PORT="3306"
 LIVEXTREM_DB_NAME="livextrem"
 LIVEXTREM_DB_USER="livextrem"
 LIVEXTREM_DB_PASS="livextrem1243"
-LIVEXTREM_TWITCH_CLIENT_ID="DEINE_CLIENT_ID"
-LIVEXTREM_TWITCH_CLIENT_SECRET="DEIN_CLIENT_SECRET"
+LIVEXTREM_TWITCH_CLIENT_ID="IHRE_CLIENT_ID"
+LIVEXTREM_TWITCH_CLIENT_SECRET="IHR_CLIENT_SECRET"
 LIVEXTREM_TWITCH_REDIRECT_URI="http://localhost:8080"</code></pre>
 
-      <p>Wenn du Host, Port, Datenbankname, Benutzername, Passwort oder Redirect-URI änderst, müssen die Werte exakt zu deiner realen Umgebung passen. Das Projekt prüft diese Einträge beim Start. Leere oder widersprüchliche Werte führen dazu, dass die Datenbankverbindung oder der Twitch-Login fehlschlagen.</p>
+      <p>Wenn Sie Host, Port, Datenbankname, Benutzername, Passwort oder Redirect-URI ändern, müssen die Werte exakt zu Ihrer realen Umgebung passen. Das Projekt prüft diese Einträge beim Start. Leere oder widersprüchliche Werte führen dazu, dass die Datenbankverbindung oder der Twitch-Login fehlschlagen.</p>
 
       <h2 id="start">Projekt starten</h2>
       <p>Der Einstiegspunkt der Anwendung ist die Datei <code>login.py</code> im Unterordner <code>livextrem</code>. Gestartet wird das Projekt am einfachsten aus dem Repository-Wurzelverzeichnis heraus, damit UV die bereits eingerichtete Umgebung direkt verwenden kann.</p>
 
       <ol class="step-list">
-        <li>Öffne ein Terminal im geklonten Projekt-Wurzelverzeichnis.</li>
-        <li>Prüfe noch einmal, dass XAMPP läuft und der Datenbankdienst aktiv ist.</li>
-        <li>Starte dann die Anwendung mit folgendem Befehl:</li>
+        <li>Öffnen Sie ein Terminal im geklonten Projekt-Wurzelverzeichnis.</li>
+        <li>Prüfen Sie noch einmal, dass XAMPP läuft und der Datenbankdienst aktiv ist.</li>
+        <li>Starten Sie dann die Anwendung mit folgendem Befehl:</li>
       </ol>
 
       <pre><code>uv run livextrem/login.py</code></pre>
@@ -457,12 +457,12 @@ LIVEXTREM_TWITCH_REDIRECT_URI="http://localhost:8080"</code></pre>
       <h3>Erster Start bei einer frischen Datenbank</h3>
       <p>Nach einem frischen SQL-Import ist die Tabellenstruktur vorhanden, aber es existiert noch kein normaler Benutzer für die Anmeldung. Deshalb wird beim ersten Start typischerweise zuerst die Registrierung verwendet.</p>
       <ol class="step-list">
-        <li>Klicke im Startfenster auf <strong>Registrieren</strong>.</li>
-        <li>Trage Benutzername, E-Mail-Adresse und Passwort ein.</li>
-        <li>Klicke auf <strong>Mit Twitch verbinden &amp; registrieren</strong>.</li>
-        <li>Der Browser öffnet die Twitch-Anmeldung. Melde dich dort mit dem Twitch-Konto an, das mit dem Streamer-Profil verknüpft werden soll.</li>
+        <li>Klicken Sie im Startfenster auf <strong>Registrieren</strong>.</li>
+        <li>Tragen Sie Benutzername, E-Mail-Adresse und Passwort ein.</li>
+        <li>Klicken Sie auf <strong>Mit Twitch verbinden &amp; registrieren</strong>.</li>
+        <li>Der Browser öffnet die Twitch-Anmeldung. Melden Sie sich dort mit dem Twitch-Konto an, das mit dem Streamer-Profil verknüpft werden soll.</li>
         <li>Nach erfolgreicher Rückmeldung erstellt liveXtrem den lokalen Benutzer und speichert die Twitch-Zuordnung in der Datenbank.</li>
-        <li>Wechsle danach zurück zum Login-Fenster und melde dich mit den gerade angelegten Zugangsdaten an.</li>
+        <li>Wechseln Sie danach zurück zum Login-Fenster und melden Sie sich mit den gerade angelegten Zugangsdaten an.</li>
       </ol>
 
       <div class="callout warning"><strong>Wichtig:</strong> Die Registrierung funktioniert nur dann sauber, wenn die Datenbank erreichbar ist, die SQL-Datei importiert wurde und in <code>keydata.env</code> bereits <code>LIVEXTREM_TWITCH_CLIENT_ID</code> und <code>LIVEXTREM_TWITCH_CLIENT_SECRET</code> eingetragen sind.</div>
