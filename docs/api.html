@@ -26,8 +26,14 @@
 <h2>Twitch-nahe Funktionsmodule</h2>
 <h3><code>fremdsys/oauth.py</code></h3>
 <p>Dieses Modul setzt den OAuth-Flow für Twitch in einer Desktop-Umgebung um. Es startet den lokalen Callback, öffnet den Browser für die Anmeldung, tauscht den Authorization Code gegen Token aus und liest anschließend Benutzerinformationen ein. Die Umsetzung passt zum Einsatzzweck, weil sie keinen separaten Webserver voraussetzt und dennoch den offiziellen Authentifizierungsablauf nutzt.</p>
+
 <h3><code>fremdsys/tapi_data.py</code></h3>
 <p>Hier liegen datenorientierte Twitch-Funktionen wie das Laden vergangener Streams, Kennzahlen, Follower- und Subscriber-Daten. Das Modul liefert damit vor allem die Grundlage für analytische und informationsbezogene Bereiche der Anwendung.</p>
+<figure>
+<img alt="Platzhalter Datenbankmodell" src="assets/images/api_diagramm.png"/>
+<figcaption>Ein Beispiel, wie Followerlisten abgerufen werden.</figcaption>
+</figure>
+
 <h3><code>fremdsys/tapi_mod.py</code></h3>
 <p>Dieses Modul kapselt Twitch-nahe Moderationsfunktionen wie Chatdaten aus VODs sowie Ban-, Timeout- und Unban-Aktionen. Es bildet damit die fachliche Brücke zwischen liveXtrem und den externen Moderationsschnittstellen von Twitch.</p>
 <h2>Zentrale GUI-Module</h2>

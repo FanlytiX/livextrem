@@ -4,10 +4,7 @@
 <h2>Architekturüberblick</h2>
 <p>liveXtrem ist als Desktop-Anwendung in Python umgesetzt und verbindet eine grafische Benutzeroberfläche mit relationaler Datenhaltung und externer Twitch-Integration. Die Anwendung ist nicht als einzelnes, unstrukturiertes Gesamtfenster aufgebaut, sondern in klar abgegrenzte Bereiche unterteilt. Dadurch lassen sich Anmeldung, Rollensteuerung, Dashboard-Logik, Datenzugriff und externe Kommunikation sauber voneinander trennen.</p>
 <p>Diese Aufteilung ist für das Projekt besonders wichtig, weil mehrere Rollen mit unterschiedlichen Aufgaben in derselben Anwendung arbeiten. Streamer, Moderation und Management greifen zwar auf zusammenhängende Informationen zu, benötigen dafür aber unterschiedliche Oberflächen und Berechtigungen. Die Architektur sorgt deshalb dafür, dass gemeinsame Daten zentral verwaltet werden, während die jeweiligen Arbeitsbereiche nur die jeweils passende Sicht darauf erhalten.</p>
-<figure>
-<img alt="Platzhalter Architekturdiagramm" src="assets/images/placeholder-architecture.png"/>
-<figcaption>Architekturdiagramm</figcaption>
-</figure>
+
 <h2>Zentrale Komponenten</h2>
 <h3>Login und Session-Kontext</h3>
 <p>Der Einstieg erfolgt über <code>login.py</code>. Dort werden Benutzeranmeldung, Registrierung neuer Streamer und der Aufbau einer fachlichen Sitzung gebündelt. Nach erfolgreicher Authentifizierung entsteht ein <code>SessionUser</code>, der nicht nur die technische Identität des eingeloggten Benutzers enthält, sondern auch den aktiven fachlichen Kontext. Gerade für liveXtrem ist das wesentlich, weil Rollenwechsel nicht zu einem Wechsel in fremde Datenräume führen dürfen.</p>
@@ -30,7 +27,7 @@
 <p>Das fachliche Datenmodell trennt Benutzeridentität, Rollenlogik und inhaltliche Objekte bewusst voneinander. Zentrale Entitäten sind unter anderem <code>users</code>, <code>user_roles</code>, <code>streamer</code>, <code>moderator</code>, <code>streamer_manager</code>, <code>streamer_moderator</code>, <code>stream_planung</code>, <code>streamer_finances</code>, <code>streamer_todos</code> und <code>twitch_tokens</code>. Dadurch wird deutlich, dass nicht nur Benutzer verwaltet werden, sondern auch deren fachliche Beziehungen, Zuständigkeiten und Arbeitsdaten strukturiert abgebildet sind.</p>
 <p>Für das Projekt ist diese Trennung besonders relevant, weil ein Benutzer nicht automatisch mit nur einer fachlichen Rolle gleichgesetzt werden kann. Entscheidend ist vielmehr, in welchem Kontext eine Person arbeitet und auf welche Daten sie dabei zugreifen darf. Das Datenmodell bildet genau diese Beziehungen ab und schafft damit die Grundlage für rollenbezogene Oberflächen und konsistente Zugriffslogik.</p>
 <figure>
-<img alt="Platzhalter Datenbankmodell" src="assets/images/placeholder-db.png"/>
+<img alt="Platzhalter Datenbankmodell" src="assets/images/datenbank.png"/>
 <figcaption>Datenbankmodell</figcaption>
 </figure>
 </main><footer class="site-footer"><div>liveXtrem Dokumentation</div><div>Statisch bereitgestellt für GitHub Pages</div></footer></div></body></html>
