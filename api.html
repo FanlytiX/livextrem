@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>API und Code-Struktur | liveXtrem</title><meta content="Projektdokumentation" name="description"/><link href="assets/styles/custom.css" rel="stylesheet"/></head><body><div class="site-shell"><header class="site-header"><div class="brand-row"><img alt="liveXtrem Logo" class="brand-logo" src="assets/images/logo.png"/><div class="brand-copy"><h1>liveXtrem</h1><p>Dokumentation für eine Desktop-Plattform zur Organisation von Streaming, Teamarbeit und Creator-Prozessen.</p></div></div><div class="header-meta"><span class="meta-pill">Projekt-Dokumentation</span></div></header><main class="main-card"><div class="topbar"><div class="eyebrow">liveXtrem • Technische Dokumentation</div><nav aria-label="Seitennavigation" class="doc-nav"><a href="index.html">Start</a><a href="installation.html">Installation</a><a href="setup.html">Setup</a><a href="architecture.html">Architektur</a><a aria-current="page" class="active" href="api.html">API &amp; Code</a><a href="user-guide.html">User Guide</a><a href="strategy.html">Technische Strategie</a></nav></div><h1>API und Code-Struktur</h1><p class="page-lead">Einordnung der zentralen Module, Verantwortlichkeiten und Integrationspunkte innerhalb der Anwendung.</p>
+<div class="callout"><strong>Info:</strong> Die Anwendung stellt keine öffentliche Web-API bereit. Entscheidend sind hier deshalb die internen Modulgrenzen, Datenflüsse und Zuständigkeiten zwischen Oberfläche, Sitzungslogik, Datenbank und Twitch-Anbindung.</div>
+<h2>Einordnung</h2>
+<p>liveXtrem arbeitet nicht mit einer klassischen externen REST-API, sondern mit einer internen Anwendungsstruktur aus GUI-Modulen, Datenbankzugriff, Sitzungsverwaltung und Twitch-nahen Funktionsbausteinen. Für die technische Einordnung ist daher weniger eine Endpunktliste relevant als die Frage, welches Modul welche Verantwortung übernimmt und wie Informationen zwischen Oberfläche, Fachlogik und externen Diensten weitergegeben werden.</p>
+<h2>Einstieg und Steuerung</h2>
+<h3><code>login.py</code></h3>
+<p>Dieses Modul bildet den Einstieg in die Anwendung. Es verwaltet Login, Registrierung und den Übergang in den passenden Arbeitsbereich nach erfolgreicher Anmeldung. Für eine Tkinter-Anwendung ist dabei entscheidend, dass der Wechsel in die Dashboards sauber im Hauptthread erfolgt und keine instabilen GUI-Zustände durch unsaubere Startlogik entstehen.</p>
+<h3><code>session_user.py</code></h3>
+<p>SessionUser und TwitchIdentity kapseln die aktuell angemeldete Sitzung. Neben den Benutzerdaten enthält die Session auch den aktiven Streamer-Kontext sowie rollenspezifische Informationen für Manager- und Moderatoransichten. Diese Bündelung vereinfacht Entscheidungen an vielen Stellen der Anwendung, weil nicht jede Oberfläche ihre Zuständigkeit neu herleiten muss.</p>
+<h3><code>router.py</code></h3>
+<p>Der Router verbindet Einstieg und Fachoberflächen. Er entscheidet, welches Dashboard geöffnet wird, und prüft dabei Rollen und Zugriffsrechte zentral. Gerade in Anwendungen mit mehreren Benutzerkontexten verhindert diese Schicht, dass Startlogik verteilt oder doppelt implementiert wird.</p>
+<h2>Konfiguration und Sicherheit</h2>
+<h3><code>config.py</code></h3>
+<p>Das Konfigurationsmodul liest Datenbank- und Twitch-Parameter aus Umgebungsvariablen oder einer lokalen JSON-Datei und prüft, ob alle erforderlichen Werte vorhanden sind. Dadurch bleibt Konfiguration an einer Stelle gebündelt und muss nicht quer durch die Anwendung verteilt gepflegt werden.</p>
+<h3><code>security.py</code></h3>
+<p>Dieses Modul übernimmt die Passwortverarbeitung. Neue Passwörter werden mit PBKDF2-SHA256 und Salt gespeichert. Gleichzeitig berücksichtigt die Implementierung ältere SHA256-Hashes, sodass bestehende Konten bei einer Weiterentwicklung der Anwendung nicht sofort unbrauchbar werden. Für eine Desktop-Anwendung ist das eine solide und nachvollziehbare Sicherheitsbasis.</p>
+<h2>Datenbankzugriff</h2>
+<h3><code>database_connection.py</code></h3>
+<p>Hier wird die technische Verbindung zur MariaDB aufgebaut. Das Modul stellt Hilfsfunktionen für Verbindungsaufbau, Abfragen und sauberes Schließen bereit. Damit bildet es die Grundlage für alle darüberliegenden Datenzugriffe.</p>
+<h3><code>database_queries.py</code></h3>
+<p>Dieses Modul bündelt fachliche Datenbankabfragen für benutzer- und streamerbezogene Informationen. Die Trennung gegenüber der GUI verhindert, dass SQL-Anweisungen direkt in Ereignisbehandlern oder Oberflächenlogik verstreut werden.</p>
+<h3><code>database_queries_moderator.py</code></h3>
+<p>Die Moderatorlogik verbindet lokale Historienverwaltung mit Twitch-bezogenen Moderationsdaten. Chatverläufe, Moderationsaktionen und aufbereitete Rückgaben für das Dashboard werden an einer Stelle zusammengeführt. Dadurch arbeitet die Oberfläche mit fachlich sinnvollen Datenstrukturen statt mit rohen API-Antworten.</p>
+<h2>Twitch-nahe Funktionsmodule</h2>
+<h3><code>fremdsys/oauth.py</code></h3>
+<p>Dieses Modul setzt den OAuth-Flow für Twitch in einer Desktop-Umgebung um. Es startet den lokalen Callback, öffnet den Browser für die Anmeldung, tauscht den Authorization Code gegen Token aus und liest anschließend Benutzerinformationen ein. Die Umsetzung passt zum Einsatzzweck, weil sie keinen separaten Webserver voraussetzt und dennoch den offiziellen Authentifizierungsablauf nutzt.</p>
+
+<h3><code>fremdsys/tapi_data.py</code></h3>
+<p>Hier liegen datenorientierte Twitch-Funktionen wie das Laden vergangener Streams, Kennzahlen, Follower- und Subscriber-Daten. Das Modul liefert damit vor allem die Grundlage für analytische und informationsbezogene Bereiche der Anwendung.</p>
+<figure>
+<img alt="Platzhalter Datenbankmodell" src="assets/images/api_diagramm.png"/>
+<figcaption>Ein Beispiel, wie Followerlisten abgerufen und verarbeitet werden.</figcaption>
+</figure>
+
+<h3><code>fremdsys/tapi_mod.py</code></h3>
+<p>Dieses Modul kapselt Twitch-nahe Moderationsfunktionen wie Chatdaten aus VODs sowie Ban-, Timeout- und Unban-Aktionen. Es bildet damit die fachliche Brücke zwischen liveXtrem und den externen Moderationsschnittstellen von Twitch.</p>
+<h2>Zentrale GUI-Module</h2>
+<h3><code>streamer_dashboard.py</code></h3>
+<p>Das Streamer-Dashboard ist der zentrale Arbeitsbereich der Anwendung. Hier laufen Aufgabenverwaltung, Streamplanung, Teamorganisation, Finanzbuchungen sowie Exportfunktionen zusammen. Inhaltlich ist dieses Modul deshalb nicht nur Oberfläche, sondern der wichtigste operative Knotenpunkt des Systems.</p>
+<h3><code>manager_gui.py</code></h3>
+<p>Das Manager-Dashboard konzentriert sich auf Termin- und Ressourcenkoordination. Kalendernavigation, Eventdialoge, zugeordnete Streamer und eigene Verwaltungslogik machen deutlich, dass organisatorische Aufgaben bewusst vom operativen Streamer-Alltag getrennt wurden.</p>
+<h3><code>moderator_dashboard.py</code></h3>
+<p>Dieses Modul bildet die Bedienlogik für Moderatoren ab. Neben Statistik und Historie stehen ein Chat-Monitor sowie konkrete Eingriffe wie Timeout, Ban und Unban im Mittelpunkt. Die Abgrenzung zu den anderen Dashboards ist sinnvoll, weil Moderation andere Daten, Risiken und Berechtigungen mit sich bringt.</p>
+</main><footer class="site-footer"><div>liveXtrem Dokumentation</div><div>Sven Thienel, Maxim Rese, Marc Stieglitz - Rudolf-Diesel-Fachschule Nürnberg</div></footer></div></body></html>

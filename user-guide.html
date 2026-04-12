@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>User Guide | liveXtrem</title><meta content="Projektdokumentation" name="description"/><link href="assets/styles/custom.css" rel="stylesheet"/></head><body><div class="site-shell"><header class="site-header"><div class="brand-row"><img alt="liveXtrem Logo" class="brand-logo" src="assets/images/logo.png"/><div class="brand-copy"><h1>liveXtrem</h1><p>Dokumentation für eine Desktop-Plattform zur Organisation von Streaming, Teamarbeit und Creator-Prozessen.</p></div></div><div class="header-meta"><span class="meta-pill">Projekt-Dokumentation</span></div></header><main class="main-card"><div class="topbar"><div class="eyebrow">liveXtrem • Technische Dokumentation</div><nav aria-label="Seitennavigation" class="doc-nav"><a href="index.html">Start</a><a href="installation.html">Installation</a><a href="setup.html">Setup</a><a href="architecture.html">Architektur</a><a href="api.html">API &amp; Code</a><a aria-current="page" class="active" href="user-guide.html">User Guide</a><a href="strategy.html">Technische Strategie</a></nav></div><h1>User Guide</h1><p class="page-lead">Praktische Nutzung aus Sicht von Streamer, Moderation und Management mit typischen Abläufen im Arbeitsalltag.</p>
+<div class="callout"><strong>Info:</strong> Der User Guide beschreibt die Nutzung entlang realer Arbeitsabläufe. Im Mittelpunkt stehen deshalb nicht einzelne Buttons, sondern die Frage, wie Aufgaben im laufenden Betrieb mit den jeweiligen Dashboards bearbeitet werden.</div>
+<h2>Ziel dieses Handbuchs</h2>
+<p>Dieser Abschnitt beschreibt die Nutzung aus Sicht der Anwender. Ziel ist nicht nur eine Auflistung einzelner Menüpunkte, sondern ein nachvollziehbarer Überblick über typische Arbeitsabläufe. Nach dem Lesen soll klar sein, welche Rolle welche Aufgaben übernimmt und wie liveXtrem im Alltag eingesetzt wird.</p>
+
+<h2>1. Anmeldung und Einstieg</h2>
+<p>Nach dem Start erscheint das Login-Fenster. Nutzer mit bestehenden Zugangsdaten melden sich dort direkt an. Für neue Nutzer steht eine Registrierung zur Verfügung, die einen Streamer-Account anlegt. Moderatoren und Manager registrieren sich nicht selbst, sondern erhalten ihre Zugangsdaten vom zugeordneten Streamer. Nach erfolgreicher Anmeldung öffnet liveXtrem automatisch das Dashboard, das zur jeweiligen Rolle gehört. Jede Rolle arbeitet dabei in ihrer eigenen Oberfläche.</p>
+<p>Bei der Registrierung werden Benutzername, E-Mail und Passwort erfasst und anschließend die Verbindung zu Twitch hergestellt. Nach dem ersten Anlegen ist der neue Benutzer immer zunächst als Streamer eingerichtet. Beim Anmelden öffnet sich für Streamer und Moderatoren zusätzlich ein Browsertab für den Twitch-Login. Erst nach erfolgreicher Autorisierung erfolgt die Weiterleitung in das passende Dashboard. Wird der Twitch-Login abgebrochen, bleibt die Weiterleitung aus und die Anmeldung muss erneut gestartet werden. Manager werden nach der Anmeldung direkt in ihr Dashboard geführt.</p>
+
+<div class="callout tip"><strong>Tipp:</strong> Um die Anmeldung zu beschleunigen ist es ratsam, dauerhaft auf Twitch angemeldet zu bleiben. Dadurch erfolgt die Anmeldung auf Twitch automatisch.</div>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_login.png"/>
+<figcaption>Das Login-Fenster.</figcaption>
+</figure>
+
+<h2>2. Arbeiten im Streamer-Dashboard</h2>
+<p>Das Streamer-Dashboard ist der zentrale Arbeitsbereich für die operative Kanalorganisation. Hier werden Planung, Aufgaben und wirtschaftliche Grunddaten an einer Stelle zusammengeführt.</p>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_streamerdb.png"/>
+<figcaption>Das Stremer Dashboard.</figcaption>
+</figure>
+<h3>To-do-Verwaltung</h3>
+<p>Aufgaben lassen sich direkt im Dashboard anlegen, priorisieren und nachverfolgen. Typische Anwendungsfälle sind Streamvorbereitung, Abstimmungen mit Partnern, technische Nacharbeiten oder offene Community-Themen. Dadurch bleibt der Arbeitsstand im Projektkontext sichtbar und wandert nicht in verstreute Notizen ab. Um eine Aufgabe zu erfassen, wird sie im Eingabefeld als kurzer Text eingetragen und über die Plus-Schaltfläche gespeichert. Bereits vorhandene Einträge lassen sich per Kontrollkästchen abhaken sowie über die Aktionssymbole bearbeiten oder löschen.</p>
+<h3>Übersicht des nächsten Streams</h3>
+<p>Ein eigener Bereich hebt den nächsten geplanten Stream hervor. Das erleichtert die kurzfristige Orientierung, wenn mehrere Inhalte parallel vorbereitet werden und schnell erkennbar sein soll, welcher Termin als Nächstes relevant ist. Damit dort ein Termin erscheint, muss zuvor in der Streamplanung mindestens ein zukünftiger Stream gespeichert werden. Die Anzeige aktualisiert sich anhand der hinterlegten Planungsdaten automatisch auf den chronologisch nächsten Termin.</p>
+<h3>Geplante Streams</h3>
+<p>Über die Planungsfunktion lassen sich Streamtermine anlegen, anpassen und bei Bedarf archivieren. Die angelegten Streams können auch Manager eines Streamers einsehen und verwalten. Zum Anlegen eines neuen Streams wird die Schaltfläche „Neuen Stream planen“ geöffnet. Dort werden Titel, Spiel oder Kategorie sowie Datum und Uhrzeit eingetragen und gespeichert. Bestehende Planungen lassen sich aus der Liste heraus zur Bearbeitung öffnen und bei Bedarf nach Bestätigung wieder entfernen.</p>
+<h3>Finanzverwaltung</h3>
+<p>Einnahmen und Ausgaben werden direkt im Dashboard erfasst und tabellarisch ausgewertet. Für die Weiterverarbeitung stehen Exporte nach PDF und CSV bereit. Das unterstützt sowohl den schnellen Überblick im Alltag als auch die spätere Dokumentation und einfache betriebswirtschaftliche Auswertung. Um eine Buchung zu erfassen, wird über „Eintrag hinzufügen“ ein Formular geöffnet, in dem Beschreibung, Betrag, Typ und Datum eingetragen werden. Vorhandene Einträge können aus der Liste bearbeitet oder gelöscht werden. Für den Export wird anschließend die gewünschte Ausgabe als PDF oder CSV gewählt.</p>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_streamerdb_eur.png"/>
+<figcaption>Die "Einnahmenüberschussrechnung".</figcaption>
+</figure>
+
+<h3>Team- und Rollenverwaltung</h3>
+<p>Der Streamer kann Moderatoren und Manager ernennen, verwalten sowie zugehörige Informationen einsehen und pflegen. Der Streamer legt hierfür ein Benutzerkonto für den Moderator oder den Manager an, das direkt mit dem Streamer verknüpft ist und auf dessen Daten zugreift. Um einen neuen Benutzer anzulegen, wird in der Rollenverwaltung „Neuen Nutzer anlegen“ gewählt. Anschließend werden Benutzername, E-Mail, Rolle und Passwort eingetragen und gespeichert. Bestehende Einträge lassen sich in der Übersicht außerdem in ihrer Rolle anpassen, beim Passwort aktualisieren oder vollständig löschen.</p>
+<div class="callout warning"><strong>Wichtig:</strong> liveXtrem vergibt einem Moderator auf Twitch keine Moderationsrechte. Daher ist es erforderlich, einem Moderator die Moderationsrolle auf Twitch zu erteilen. Sofern sich der Moderator (auch bei einem bestehenden Zugang) auf liveXtrem anmeldet, werden die Rechte an liveXtrem übertragen.</div>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_streamerdb_rollen.png"/>
+<figcaption>Die Rollenverteilung des Streamers.</figcaption>
+</figure>
+
+<h2>3. Arbeiten im Manager-Dashboard</h2>
+<p>Das Manager-Dashboard konzentriert sich auf organisatorische und koordinierende Aufgaben rund um geplante Inhalte und betreute Streamer-Kontexte.</p>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_mandb.png"/>
+<figcaption>Das Manager Dashboard.</figcaption>
+</figure>
+<h3>Event- und Terminplanung</h3>
+<p>Hier werden Streams und Termine über eine Kalenderansicht verwaltet. Manager können Inhalte planen, Termine anpassen und den Überblick über ihre zugeordneten Streamer behalten. Dabei werden alle Änderungen sowohl vom Moderator als auch vom Streamer synchronisiert. Um einen Termin zu planen, wird in der Kalenderansicht der gewünschte Tag gewählt. Danach werden im Dialog der Event-Titel und der zugeordnete Streamer ausgewählt und gespeichert. Vorhandene Termine können über denselben Ablauf geöffnet und angepasst werden.</p>
+<h3>Übersicht aller Events</h3>
+<p>Neben der Kalenderansicht steht eine Listenansicht mit vergangenen und zukünftigen Einträgen zur Verfügung. Diese Sicht ist besonders hilfreich, wenn gezielt nach bestehenden Planungen oder einzelnen Streamern gesucht werden soll.</p>
+<h3>Verwaltung zugeordneter Streamer</h3>
+<p>Manager arbeiten nicht global über alle Datensätze, sondern innerhalb ihrer zugewiesenen Zuständigkeiten. Das begrenzt Zugriffe nachvollziehbar und verhindert, dass organisatorische Rollen unkontrolliert auf fremde Kanäle zugreifen.</p>
+
+<h2>4. Arbeiten im Moderator-Dashboard</h2>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_moddb.png"/>
+<figcaption>Das Moderator Dashboard.</figcaption>
+</figure>
+<p>Das Moderator-Dashboard unterstützt Community-Management und konkrete Moderationsaufgaben in einem klar abgegrenzten Arbeitsbereich.</p>
+<h3>Dashboard und Historie</h3>
+<p>Zu Beginn werden Kennzahlen und zuletzt ausgeführte Moderationsaktionen angezeigt. Dadurch ist schnell ersichtlich, welche Eingriffe bereits erfolgt sind.</p>
+<h3>Chat Monitor</h3>
+<p>Der Chat-Monitor arbeitet mit VOD-basierten Chatdaten. Das ist besonders nützlich, wenn problematische Situationen nachträglich eingeordnet, Gesprächsverläufe geprüft oder Moderationsentscheidungen nachvollzogen werden müssen.</p>
+<div class="callout warning"><strong>Wichtig:</strong> Diese Funktion ist vorübergehend nicht verfügbar, da sich die Twitch-Richtlinien im Laufe des Projekts verändert haben und somit kein Zugriff mehr auf den Chatverlauf erfolgen kann.</div>
+<h3>Aktionen: Timeout, Ban und Unban</h3>
+<p>Moderatoren können Benutzer zeitweise sperren, dauerhaft bannen oder bestehende Sperren wieder aufheben. Die Oberfläche führt diese Aktionen als klare Arbeitsabläufe und macht Moderationsvorgänge damit nachvollziehbar. Für einen Timeout, Ban oder Unban wird im jeweiligen Reiter der Benutzername eingetragen. Beim Timeout werden zusätzlich Dauer und optional ein Grund hinterlegt, beim Ban optional ein Grund. Anschließend wird die Aktion direkt über die passende Schaltfläche ausgeführt. Ein permanenter Bann wird vor dem Absenden zusätzlich bestätigt.</p>
+<figure>
+<img alt="UI-Screenshot" src="assets/images/ui_moddb_aktionen.png"/>
+<figcaption>Die Aktionen im Moderator Dashboard.</figcaption>
+</figure>
+
+<h2>5. Typische Nutzungsszenarien</h2>
+<h3>Szenario A: Ein Streamer plant die kommende Woche</h3>
+<p>Der Streamer plant zunächst neue Inhalte, prüft den nächsten anstehenden Termin und überführt offene Punkte in die Aufgabenverwaltung. Anschließend können bereits Ausgaben, Kooperationen oder sonstige finanzielle Einträge ergänzt werden. So bleiben organisatorische und kaufmännische Vorbereitung in einem zusammenhängenden Ablauf.</p>
+<h3>Szenario B: Ein Manager koordiniert mehrere Termine</h3>
+<p>Der Manager öffnet die Kalenderansicht, plant Termine für zugeordnete Streamer und kontrolliert in der Listenansicht Überschneidungen oder offene Punkte. Planung wird dadurch nicht nur festgehalten, sondern auch laufend überprüfbar und für mehrere Beteiligte nachvollziehbar.</p>
+<h3>Szenario C: Ein Moderator arbeitet einen Vorfall nach</h3>
+<p>Der Moderator analysiert über den Chat-Monitor einen auffälligen Verlauf im VOD-Kontext und führt bei Bedarf einen Timeout oder Bann durch. Die Aktion erscheint anschließend in der Historie und bleibt damit für spätere Rückfragen oder weitere Maßnahmen nachvollziehbar.</p>
+</main><footer class="site-footer"><div>liveXtrem Dokumentation</div><div>Sven Thienel, Maxim Rese, Marc Stieglitz - Rudolf-Diesel-Fachschule Nürnberg</div></footer></div></body></html>

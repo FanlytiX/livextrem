@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1" name="viewport"/><title>Installation | liveXtrem</title><meta content="Projektdokumentation" name="description"/><link href="assets/styles/custom.css" rel="stylesheet"/></head><body><div class="site-shell"><header class="site-header"><div class="brand-row"><img alt="liveXtrem Logo" class="brand-logo" src="assets/images/logo.png"/><div class="brand-copy"><h1>liveXtrem</h1><p>Dokumentation für eine Desktop-Plattform zur Organisation von Streaming, Teamarbeit und Creator-Prozessen.</p></div></div><div class="header-meta"><span class="meta-pill">Projekt-Dokumentation</span></div></header><main class="main-card"><div class="topbar"><div class="eyebrow">liveXtrem • Technische Dokumentation</div><nav aria-label="Seitennavigation" class="doc-nav"><a href="index.html">Start</a><a aria-current="page" class="active" href="installation.html">Installation</a><a href="setup.html">Setup</a><a href="architecture.html">Architektur</a><a href="api.html">API &amp; Code</a><a href="user-guide.html">User Guide</a><a href="strategy.html">Technische Strategie</a></nav></div><h1>Installation</h1><p class="page-lead">Bereitstellung der Windows-Version mit stabiler Ordnerstruktur und ohne zusätzlichen Build-Prozess.</p>
+<div class="callout"><strong>Info:</strong> Dieser Abschnitt beschreibt bewusst nur die Bereitstellung der lauffähigen Anwendung. Entwicklungssetup, Datenbankeinrichtung und API-Konfiguration werden getrennt behandelt, damit Nutzung und technische Vorbereitung nicht vermischt werden.</div>
+<h2>Ziel dieses Abschnitts</h2>
+<p>Diese Seite beschreibt die Inbetriebnahme der bereitgestellten Windows-Version von liveXtrem. Der Schwerpunkt liegt auf einer reproduzierbaren Erstinstallation für Präsentationen, Abgaben und normale Nutzung. Dadurch lässt sich die Anwendung testen, ohne vorher eine Entwicklungsumgebung oder zusätzliche Python-Abhängigkeiten einrichten zu müssen.</p>
+<h2>Voraussetzungen</h2>
+<ul>
+<li>Windows 10 oder neuer</li>
+<li>Internetverbindung</li>
+<li>Berechtigung zum Entpacken von ZIP-Dateien und zum Erstellen einer Desktop-Verknüpfung</li>
+<li>Ein dauerhaftes Zielverzeichnis, in dem der entpackte Anwendungsordner unverändert liegen bleibt</li>
+</ul>
+<p>Da die Anwendung als vorkompilierte EXE bereitgestellt wird, müssen auf dem Zielsystem keine Python-Pakete manuell installiert werden. Entscheidend ist jedoch, dass die entpackte Ordnerstruktur vollständig erhalten bleibt. Die Datei livextrem.exe darf deshalb nicht aus ihrem Ordner herauskopiert werden, weil weitere Ressourcen relativ zu diesem Speicherort geladen werden.</p>
+<h2>Download</h2>
+<p><a class="download-button" href="https://github.com/FanlytiX/livextrem/blob/main/livextrem_v1.0.zip">livextrem_v1.0.zip herunterladen</a></p>
+<h2>Schritt-für-Schritt-Anleitung</h2>
+<h3>1. Archiv herunterladen</h3>
+<p>Laden Sie die Datei livextrem_v1.0.zip aus dem Repository herunter. Das Archiv enthält die ausführbare Anwendung sowie die für den Start benötigten Zusatzdateien.</p>
+<h3>2. Archiv an einem festen Speicherort entpacken</h3>
+<p>Entpacken Sie die ZIP-Datei in ein Verzeichnis, das nicht versehentlich verschoben oder gelöscht wird. Geeignet ist ein fester Ordner auf dem lokalen Datenträger. Der Speicherort sollte anschließend nicht mehr verändert werden, weil die Anwendung auf Dateien innerhalb dieser Struktur zugreift.</p>
+
+<div class="callout tip"><strong>Tipp:</strong> Suchen Sie die Datei livextrem.exe und erstellen Sie davon eine Desktop-Verknüpfung. So bleibt die Anwendung technisch an ihrem vorgesehenen Ort, während der tägliche Start komfortabel über die Verknüpfung erfolgen kann.</div>
+
+<div class="callout warning"><strong>Wichtig:</strong> Löschen und verschieben Sie keinesfalls Dateien und Ordner von liveXtrem.</div>
+
+
+<h3>3. Anwendung starten</h3>
+<p>Starten Sie liveXtrem anschließend über die Verknüpfung. Wenn der Ordner vollständig entpackt wurde und keine Dateien verschoben wurden, lässt sich die Anwendung ohne weitere Installationsschritte öffnen.</p>
+<div class="callout"><strong>Info:</strong> Eine eigene Datenbank, sowie die Anmeldung der Twitch-API ist für diese Installationsvariante nicht notwendig, da bereits voreingestellte Ressourcen verwendet werden. Sollte die Datenbank dauerhaft nicht verfügbar sein, sollte auf die vollständige Projektinstallation umgestiegen werden. Siehe "Setup". </div>
+<h2>Warum die <code>exe</code> im Ordner bleiben muss</h2>
+<p>Desktop-Anwendungen dieser Art werden häufig zusammen mit weiteren Ressourcen ausgeliefert, etwa Bildern, Theme-Dateien oder Konfigurationen. Wird nur die eigentliche Programmdatei verschoben, fehlen diese Abhängigkeiten am erwarteten Speicherort. Die Folge sind Startprobleme oder unvollständige Oberflächen. Die saubere Vorgehensweise besteht deshalb darin, stets den gesamten entpackten Ordner an seinem Platz zu belassen und lediglich eine Verknüpfung zu nutzen.</p>
+<h2>Abgrenzung zur Entwicklerinstallation</h2>
+<p>Die bereitgestellte ZIP-Datei dient der Nutzung der fertigen Anwendung. Informationen zur späteren Einrichtung von Datenbank, API-Zugängen und einem möglichen Quellcode-Setup werden bewusst getrennt auf der Seite Setup behandelt. So bleibt dieser Abschnitt auf die tatsächliche Inbetriebnahme der ausführbaren Version konzentriert.</p>
+</main><footer class="site-footer"><div>liveXtrem Dokumentation</div><div>Sven Thienel, Maxim Rese, Marc Stieglitz - Rudolf-Diesel-Fachschule Nürnberg</div></footer></div></body></html>
